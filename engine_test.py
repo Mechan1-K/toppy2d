@@ -7,7 +7,7 @@ FPS = 30
 
 screen = pygame.display.set_mode((500, 500))
 
-objects = [toppy2D.Object(0, 0, pygame.Surface((100, 100)), (0, 50, 100, 50))]
+objects = [toppy2D.Object(0, 0, toppy2D.load_image("cat.png", (100, 100)), (0, 50, 100, 50))]
 engine = toppy2D.Engine()
 engine.add_objects(objects)
 clock = pygame.time.Clock()
@@ -20,7 +20,7 @@ def events():
 
 def draw():
     screen.fill("#555555")
-    engine.draw(screen, True)
+    engine.draw(screen, (True, True, True))
     pygame.display.update()
 
 running = True

@@ -23,11 +23,15 @@ def load_image(path: str):
 def load_image(path: str, scale: float = None):
     ...
 
+@overload
+def load_image(path: str, size: tuple = None):
+    ...
+
 def load_image(path: str, size: tuple = None):
     if isinstance(size, tuple):
         return pygame.transform.scale(pygame.image.load(path), size)
     elif isinstance(size, float):
-        return pygame.transform.scale_by(pygame.image.load(path))
+        return pygame.transform.scale_by(pygame.image.load(path), size)
     elif size == None:
         return pygame.image.load(path)
     else:
@@ -74,15 +78,14 @@ class Object:
     def get_id(self):
         return self.__id
     
-    def draw(self, surface: pygame.Surface, camera_pos: tuple[int, int], debug: bool = False) -> None:
-        if debug:
-            c = self.get_collider()
+    def draw(self, surface: pygame.Surface, camera_pos: tuple[int, int], debug_options: tuple[bool, bool, bool] = (True, False, False)) -> None:
+        if debug_options[0]:
+            surface.blit(self.surface, (self.x + camera_pos[0], self.y + camera_pos[1]))
+        if debug_options[1]:
             pygame.draw.rect(surface, "#FF00FF", (self.x + camera_pos[0], self.y + camera_pos[1], self.surface.get_width(), self.surface.get_height()), 3)
-            pygame.draw.rect(surface, "#FF0000", (c[0] + camera_pos[0], c[1] + camera_pos[1], c[2], c[3]), 3)
-            print((c[0] - camera_pos[0], c[1] - camera_pos[1], c[2], c[3]), camera_pos)
-        else:
-            self.surface.blit(surface, (self.x + camera_pos[0], self.y + camera_pos[1]))
-        
+        if debug_options[2]:
+            c = self.get_collider()
+            pygame.draw.rect(surface, "#FF0000", (c[0] + camera_pos[0], c[1] + camera_pos[1], c[2], c[3]), 4)        
 
 class Engine:
     def __init__(self):
@@ -107,9 +110,9 @@ class Engine:
     def get_objects(self):
         return self.__objects
     
-    def draw(self, surface: pygame.Surface, debug:bool = False):
+    def draw(self, surface: pygame.Surface, debug_options: tuple[bool, bool, bool] = (True, False, False)):
         # center camera pos
         camera_pos = (self.camera_x + (surface.get_width()//2), self.camera_y + (surface.get_height()//2))
 
         for object in self.__objects:
-            object.draw(surface, camera_pos, debug)
+            object.draw(surface, camera_pos, debug_options)
