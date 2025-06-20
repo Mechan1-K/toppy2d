@@ -2,7 +2,11 @@ import pygame
 import random
 from typing import overload
 
-VER = "0.2.1"
+VER = "0.2.2"
+NULL_SURFACE = pygame.Surface((100, 100))
+NULL_SURFACE.fill("#FF00FF")
+pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
+pygame.draw.rect(NULL_SURFACE, "#000000", (50, 50, 50, 50))
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -46,13 +50,13 @@ def load_image(path: str, size: tuple = None):
 # ==============================================================================
 
 class Object:
-    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = pygame.Surface((100, 100)).fill("#FF00FF"), collision_rect:tuple = None):
+    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = NULL_SURFACE, collision_rect:tuple = None):
         self.__id = generate_id()
-        self.name = (self.__id if name == None else name)
+        self.name = ("Object" if name == None else name)
 
         self.x = x
         self.y = y
-
+        
         self.surface = texture_surface
         self.collider = collision_rect
     
@@ -85,8 +89,9 @@ class Object:
         if debug_options[1]:
             pygame.draw.rect(surface, "#FF00FF", (self.x + camera_pos[0], self.y + camera_pos[1], self.surface.get_width(), self.surface.get_height()), 3)
         if debug_options[2]:
-            c = self.get_colliders()
-            pygame.draw.rect(surface, "#FF0000", (c[0] + camera_pos[0], c[1] + camera_pos[1], c[2], c[3]), 4)        
+            colliders = self.get_colliders()
+            for c in colliders:
+                pygame.draw.rect(surface, "#FF0000", (c[0] + camera_pos[0], c[1] + camera_pos[1], c[2], c[3]), 4)        
 
 class Group():
     def __init__(self, name: str = None, objects: list[Object] = []):
@@ -98,7 +103,7 @@ class Group():
         Group.get_pos() always returns (0, 0)
         """
         self.__id = generate_id()
-        self.name = (self.__id if name == None else name)
+        self.name = ("Group" if name == None else name)
 
         self.__objects: list[Object] = objects
     

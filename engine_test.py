@@ -1,5 +1,5 @@
 import pygame
-import toppy2D
+from toppy2D import *
 
 pygame.init()
 
@@ -7,8 +7,9 @@ FPS = 30
 
 screen = pygame.display.set_mode((500, 500))
 
-objects = [toppy2D.Object(0, 0, toppy2D.load_image("cat.png", (100, 100)), (0, 50, 100, 50))]
-engine = toppy2D.Engine()
+objects = [Object(100, 100), Group(objects=[Object(200, 200), Object(305, 200)])]
+test = objects[1].get_id()
+engine = Engine()
 engine.add_objects(objects)
 clock = pygame.time.Clock()
 
@@ -17,6 +18,9 @@ def events():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
+            engine.delete_object(test)
 
 def draw():
     screen.fill("#555555")
