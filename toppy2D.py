@@ -2,7 +2,7 @@ import pygame
 import random
 from typing import overload
 
-VER = "0.2.0"
+VER = "0.2.1"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -46,8 +46,9 @@ def load_image(path: str, size: tuple = None):
 # ==============================================================================
 
 class Object:
-    def __init__(self, x, y, texture_surface: pygame.Surface, collision_rect:tuple = None):
+    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = pygame.Surface((100, 100)).fill("#FF00FF"), collision_rect:tuple = None):
         self.__id = generate_id()
+        self.name = (self.__id if name == None else name)
 
         self.x = x
         self.y = y
@@ -88,11 +89,16 @@ class Object:
             pygame.draw.rect(surface, "#FF0000", (c[0] + camera_pos[0], c[1] + camera_pos[1], c[2], c[3]), 4)        
 
 class Group():
-    def __init__(self, x, y, objects):
-        self.__id = generate_id()
+    def __init__(self, name: str = None, objects: list[Object] = []):
+        """
+        A Group holds multiple Objects in one place in the code for easy identifying.
 
-        self.x = x
-        self.y = y
+        Objects in the group are not relative to any position, they are all free to move around separately.
+
+        Group.get_pos() always returns (0, 0)
+        """
+        self.__id = generate_id()
+        self.name = (self.__id if name == None else name)
 
         self.__objects: list[Object] = objects
     
@@ -127,7 +133,7 @@ class Group():
 
         (x, y)
         """
-        return self.x, self.y
+        return (0, 0)
     
     def get_id(self):
         return self.__id
