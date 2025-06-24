@@ -9,8 +9,8 @@ screen = pygame.display.set_mode((500, 500))
 
 objects = [Object(100, 100), Group(objects=[Object(200, 200), Object(305, 200)])]
 test = objects[1].get_id()
-engine = Engine()
-engine.add_objects(objects)
+world = World()
+world.add_objects(objects)
 clock = pygame.time.Clock()
 
 def events():
@@ -20,11 +20,11 @@ def events():
             running = False
         
         if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
-            engine.delete_object(test)
+            world.delete_object(test)
 
 def draw():
     screen.fill("#555555")
-    engine.draw(screen, (True, True, True))
+    world.draw(screen, (True, True, True))
     pygame.display.update()
 
 running = True
@@ -33,7 +33,7 @@ while running:
     events()
     keys = pygame.key.get_pressed()
     if keys[pygame.K_LEFT]:
-        engine.camera_x += 5
+        world.camera_x += 5
     if keys[pygame.K_RIGHT]:
-        engine.camera_x -= 5
+        world.camera_x -= 5
     draw()

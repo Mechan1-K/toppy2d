@@ -2,7 +2,7 @@ import pygame
 import random
 from typing import overload
 
-VER = "0.2.2"
+VER = "0.3.0"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -11,6 +11,7 @@ pygame.draw.rect(NULL_SURFACE, "#000000", (50, 50, 50, 50))
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
 # ==============================================================================
+# region
 
 generated_ids = []
 def generate_id(length=8):
@@ -45,13 +46,15 @@ def load_image(path: str, size: tuple = None):
     else:
         raise TypeError("image size/scale must be a tuple/float/int")
 
+# endregion
+
 # ==============================================================================
 # CLASSES
 # ==============================================================================
+# region
 
 class Object:
     def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = NULL_SURFACE, collision_rect:tuple = None):
-        self.__id = generate_id()
         self.name = ("Object" if name == None else name)
 
         self.x = x
@@ -72,17 +75,6 @@ class Object:
             collider = self.collider
         return [(self.x + collider[0], self.y + collider[1], collider[2], collider[3])]
     
-    def get_pos(self) -> tuple[int, int]:
-        """
-        returns a tuple of the object's position, relative to the world:
-
-        (x, y)
-        """
-        return self.x, self.y
-    
-    def get_id(self):
-        return self.__id
-    
     def draw(self, surface: pygame.Surface, camera_pos: tuple[int, int], debug_options: tuple[bool, bool, bool] = (True, False, False)) -> None:
         if debug_options[0]:
             surface.blit(self.surface, (self.x + camera_pos[0], self.y + camera_pos[1]))
@@ -93,7 +85,7 @@ class Object:
             for c in colliders:
                 pygame.draw.rect(surface, "#FF0000", (c[0] + camera_pos[0], c[1] + camera_pos[1], c[2], c[3]), 4)        
 
-class Group():
+class Group:
     def __init__(self, name: str = None, objects: list[Object] = []):
         """
         A Group holds multiple Objects in one place in the code for easy identifying.
@@ -102,27 +94,8 @@ class Group():
 
         Group.get_pos() always returns (0, 0)
         """
-        self.__id = generate_id()
         self.name = ("Group" if name == None else name)
-
-        self.__objects: list[Object] = objects
-    
-    def add_object(self, object: Object):
-        self.__objects.append(object)
-    
-    def add_objects(self, objects: list[Object]):
-        self.__objects.extend(objects)
-    
-    def get_object_index_by_id(self, id: str):
-        for i in range(len(self.__objects)):
-            if self.__objects[i].get_id() == id:
-                return i
-    
-    def delete_object(self, id: str):
-        del self.__objects[self.get_object_index_by_id(id)]
-    
-    def get_objects(self):
-        return self.__objects
+        self.objects: list[Object] = objects
 
     def get_colliders(self) -> tuple[int, int, int, int]:
         """
@@ -130,49 +103,32 @@ class Group():
 
         (x, y, w, h)
         """
-        return [object.get_colliders() for object in self.__objects]
-    
-    def get_pos(self) -> tuple[int, int]:
-        """
-        returns a tuple of the object's position, relative to the world:
+        colliders = []
+        for object in self.objects:
+            colliders.extend(object.get_colliders())
+        return colliders
 
-        (x, y)
-        """
-        return (0, 0)
-    
-    def get_id(self):
-        return self.__id
+    def get_objects_by_name(self, name: str):
+        out = []
+        for object in self.objects:
+            if object.name == name:
+                out.append(object)
     
     def draw(self, surface: pygame.Surface, camera_pos, debug_options: tuple[bool, bool, bool] = (True, False, False)):
-        for object in self.__objects:
+        for object in self.objects:
             object.draw(surface, camera_pos, debug_options)
 
-class Engine:
+class World(Group):
     def __init__(self):
         self.camera_x = 0
         self.camera_y = 0
-        self.__objects: list[Object] = []
-    
-    def add_object(self, object: Object):
-        self.__objects.append(object)
-    
-    def add_objects(self, objects: list[Object]):
-        self.__objects.extend(objects)
-    
-    def get_object_index_by_id(self, id: str):
-        for i in range(len(self.__objects)):
-            if self.__objects[i].get_id() == id:
-                return i
-    
-    def delete_object(self, id: str):
-        del self.__objects[self.get_object_index_by_id(id)]
-    
-    def get_objects(self):
-        return self.__objects
+        self.objects: list[Object] = []
     
     def draw(self, surface: pygame.Surface, debug_options: tuple[bool, bool, bool] = (True, False, False)):
         # center camera pos
         camera_pos = (self.camera_x + (surface.get_width()//2), self.camera_y + (surface.get_height()//2))
 
-        for object in self.__objects:
+        for object in self.objects:
             object.draw(surface, camera_pos, debug_options)
+
+#endregion
