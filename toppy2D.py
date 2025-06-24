@@ -2,7 +2,7 @@ import pygame
 import random
 from typing import overload
 
-VER = "0.3.0"
+VER = "0.4.0"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -117,6 +117,33 @@ class Group:
     def draw(self, surface: pygame.Surface, camera_pos, debug_options: tuple[bool, bool, bool] = (True, False, False)):
         for object in self.objects:
             object.draw(surface, camera_pos, debug_options)
+
+class Union(Group):
+    def __init__(self, x: int, y: int, name = None, objects = []):
+        super().__init__(name, objects)
+        self.x = x
+        self.y = y
+    
+    def transform_objects(self):
+        transformed = []
+        for object in self.objects:
+            temp = object.copy()
+            temp.x += self.x
+            temp.y += self.y
+            transformed.append(temp)
+        return transformed
+    
+    def get_colliders(self):
+        temp = self.objects.copy()
+        self.objects = self.transform_objects()
+        super().get_colliders()
+        self.objects = temp.copy()
+    
+    def draw(self, surface, camera_pos, debug_options = (True, False, False)):
+        temp = self.objects.copy()
+        self.objects = self.transform_objects()
+        super().draw(surface, camera_pos, debug_options)
+        self.objects = temp.copy()
 
 class World(Group):
     def __init__(self):
