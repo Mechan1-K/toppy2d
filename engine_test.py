@@ -7,10 +7,9 @@ FPS = 30
 
 screen = pygame.display.set_mode((500, 500))
 
-objects = [Object(100, 100), Group(objects=[Object(200, 200), Object(305, 200)])]
-test = objects[1].get_id()
+objects = [Object(100, 100), Group(objects=[Object(200, 200), Object(305, 200)]), Union(-100, 100, objects=[Object(0, 0), Object(10, 10)])]
 world = World()
-world.add_objects(objects)
+world.objects.extend(objects)
 clock = pygame.time.Clock()
 
 def events():
@@ -20,7 +19,7 @@ def events():
             running = False
         
         if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
-            world.delete_object(test)
+            world.objects[2].x += 10
 
 def draw():
     screen.fill("#555555")

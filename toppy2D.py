@@ -1,8 +1,9 @@
 import pygame
 import random
 from typing import overload
+import copy
 
-VER = "0.4.0"
+VER = "0.4.1"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -94,7 +95,7 @@ class Group:
 
         Group.get_pos() always returns (0, 0)
         """
-        self.name = ("Group" if name == None else name)
+        self.name = (self.__class__.__name__ if name == None else name)
         self.objects: list[Object] = objects
 
     def get_colliders(self) -> tuple[int, int, int, int]:
@@ -127,7 +128,7 @@ class Union(Group):
     def transform_objects(self):
         transformed = []
         for object in self.objects:
-            temp = object.copy()
+            temp = copy.copy(object)
             temp.x += self.x
             temp.y += self.y
             transformed.append(temp)
