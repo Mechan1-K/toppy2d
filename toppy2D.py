@@ -3,7 +3,7 @@ import random
 from typing import overload
 import copy
 
-VER = "0.4.1"
+VER = "0.5.0"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -56,7 +56,7 @@ def load_image(path: str, size: tuple = None):
 
 class Object:
     def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = NULL_SURFACE, collision_rect:tuple = None):
-        self.name = ("Object" if name == None else name)
+        self.name = (self.__class__.__name__ if name == None else name)
 
         self.x = x
         self.y = y
@@ -78,13 +78,38 @@ class Object:
     
     def draw(self, surface: pygame.Surface, camera_pos: tuple[int, int], debug_options: tuple[bool, bool, bool] = (True, False, False)) -> None:
         if debug_options[0]:
-            surface.blit(self.surface, (self.x + camera_pos[0], self.y + camera_pos[1]))
+            surface.blit(self.surface, (self.x - camera_pos[0], self.y - camera_pos[1]))
         if debug_options[1]:
-            pygame.draw.rect(surface, "#FF00FF", (self.x + camera_pos[0], self.y + camera_pos[1], self.surface.get_width(), self.surface.get_height()), 3)
+            pygame.draw.rect(surface, "#FF00FF", (self.x - camera_pos[0], self.y - camera_pos[1], self.surface.get_width(), self.surface.get_height()), 3)
         if debug_options[2]:
             colliders = self.get_colliders()
             for c in colliders:
-                pygame.draw.rect(surface, "#FF0000", (c[0] + camera_pos[0], c[1] + camera_pos[1], c[2], c[3]), 4)        
+                pygame.draw.rect(surface, "#FF0000", (c[0] - camera_pos[0], c[1] - camera_pos[1], c[2], c[3]), 4)        
+
+class Player(Object):
+    def __init__(self, x, y, name = None, texture_surface = NULL_SURFACE, collision_rect = None, speed = 5, controls: list[bool, bool, bool, bool] = []):
+        """
+        controls is a list with keyboard keys, examples:
+
+        "w", "LEFT", "RETURN", "1", etc...
+
+        if controls is not defined, you are expected to use the move() method manually with bools
+        """
+        super().__init__(x, y, name, texture_surface, collision_rect)
+        self.speed = speed
+        self.controls = controls
+        self.controls_auto = True
+    
+    def control(self):
+        bools = []
+        keys = pygame.key.get_pressed()
+        for key in self.controls:
+            bools.append(keys[getattr(pygame, "K_"+key)])
+        self.move(*bools)
+
+    def move(self, up: bool, down: bool, left: bool, right: bool):
+        self.x += (right - left) * self.speed
+        self.y += (down - up) * self.speed
 
 class Group:
     def __init__(self, name: str = None, objects: list[Object] = []):
@@ -150,13 +175,35 @@ class World(Group):
     def __init__(self):
         self.camera_x = 0
         self.camera_y = 0
+        self.camera_lock = None
         self.objects: list[Object] = []
+        self.players: list[Player] = []
+    
+    def lock_camera(self, player_name: str):
+        self.camera_lock = player_name
+    
+    def unlock_camera(self):
+        self.camera_lock = None
+    
+    def players_tick(self):
+        for player in self.players:
+            if player.controls_auto:
+                player.control()
+        
+        if self.camera_lock != None:
+            for player in self.players:
+                if player.name == self.camera_lock:
+                    self.camera_x, self.camera_y = player.x + (player.surface.get_rect().w//2), player.y + (player.surface.get_rect().h//2)
+                    break
     
     def draw(self, surface: pygame.Surface, debug_options: tuple[bool, bool, bool] = (True, False, False)):
         # center camera pos
-        camera_pos = (self.camera_x + (surface.get_width()//2), self.camera_y + (surface.get_height()//2))
+        camera_pos = (self.camera_x - (surface.get_width()//2), self.camera_y - (surface.get_height()//2))
 
         for object in self.objects:
             object.draw(surface, camera_pos, debug_options)
+        
+        for player in self.players:
+            player.draw(surface, camera_pos, debug_options)
 
 #endregion
