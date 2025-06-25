@@ -20,9 +20,6 @@ def events():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
-            world.objects[2].x += 10
 
 def draw():
     screen.fill("#555555")
