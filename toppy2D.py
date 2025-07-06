@@ -4,7 +4,7 @@ from typing import overload
 import copy
 import math
 
-VER = "0.6.0"
+VER = "1.0.0"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -154,6 +154,12 @@ class Object:
             collider = self.collider
         return [(self.x + collider[0], self.y + collider[1], collider[2], collider[3])]
     
+    def info_str(self):
+        """
+        returns info about object
+        """
+        return f"({self.type}) {self.name} - {self.x};{self.y}"
+    
     def draw(self, surface: pygame.Surface, camera_pos: tuple[int, int], debug_options: tuple[bool, bool, bool] = (True, False, False)) -> None:
         if debug_options[0]:
             surface.blit(self.surface, (self.x - camera_pos[0], self.y - camera_pos[1]))
@@ -252,6 +258,21 @@ class Group:
                 working_list.append(object)
         return working_list
     
+    def info_str(self):
+        out = f"({self.type}) {self.name}"
+        for i in range(len(self.objects)):
+            for line in self.objects[i].info_str().split("\n"):
+                if i == len(self.objects)-1 and line[0] != ' ':
+                    out += "\n └" + line
+                elif i == len(self.objects)-1:
+                    out += "\n  " + line
+                elif line[0] == ' ':
+                    out += "\n │" + line
+                else:
+                    out += "\n ├" + line
+        
+        return out
+
     def draw(self, surface: pygame.Surface, camera_pos, debug_options: tuple[bool, bool, bool] = (True, False, False)):
         working_list = self.extract_objects()
         length = len(working_list)
@@ -296,12 +317,15 @@ class Union(Group):
         self.objects = temp.copy()
 
 class World(Group):
-    def __init__(self):
+    def __init__(self, FPS=30):
+        super().__init__("World")
         self.camera_x = 0
         self.camera_y = 0
         self.camera_lock = None
-        self.objects: list[Object] = []
         self.players: list[Player] = []
+        
+        self.FPS = FPS
+        self.clock = pygame.time.Clock()
     
     def lock_camera(self, player_name: str):
         self.camera_lock = player_name
@@ -319,6 +343,18 @@ class World(Group):
                 if player.name == self.camera_lock:
                     self.camera_x, self.camera_y = player.x + (player.surface.get_rect().w//2), player.y + (player.surface.get_rect().h//2)
                     break
+    
+    def tick(self):
+        """
+        Handles the following:
+
+        - maintaining FPS
+
+        - players
+        """
+
+        self.clock.tick(self.FPS)
+        self.players_tick()
     
     def extract_objects(self):
         out = super().extract_objects()

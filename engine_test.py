@@ -3,8 +3,6 @@ from toppy2D import *
 
 pygame.init()
 
-FPS = 30
-
 screen = pygame.display.set_mode((500, 500))
 
 objects = [Object(100, 100), Group(objects=[Object(200, 200), Object(305, 200)]), Union(-100, 100, objects=[Object(0, 0), Object(10, 10)])]
@@ -12,8 +10,6 @@ world = World()
 world.objects.extend(objects)
 world.players = [Player(0, 0, controls=["w", "s", "a", "d"], name="guy"), Player(100, 0, controls=["y", "h", "g", "j"], name="ziom")]
 world.lock_camera("guy")
-
-clock = pygame.time.Clock()
 
 def events():
     global running
@@ -28,8 +24,8 @@ def draw():
 
 running = True
 while running:
-    clock.tick(FPS)
     events()
-    world.players_tick()
+    world.tick()
+    print(world.info_str())
 
     draw()
