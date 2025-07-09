@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.2.1"
+VER = "1.2.0"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
