@@ -2,9 +2,10 @@ import pygame
 from typing import overload
 import copy
 from pygame.math import Vector2
+from pygame.color import Color
 import math
 
-VER = "1.1.0"
+VER = "1.1.1"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -71,6 +72,12 @@ def scale_nostretch(surface: pygame.Surface, target_size: tuple[int, int]):
     result_surface.blit(scaled_surface, (x, y))
 
     return result_surface
+
+def draw_text(surface: pygame.Surface, text: str, pos: tuple[int, int], color: Color = "#FFFFFF", size: int = 25, font_name: str = None, background_color: Color = None, antialias: bool = True):
+    x, y = pos
+    lines = text.split("\n")
+    for i in range(len(lines)):
+        surface.blit(pygame.font.Font(font_name, size).render(lines[i], antialias, color, background_color), (x, y + (i*(size-2))))
 
 # endregion
 

@@ -25,6 +25,7 @@ def events():
 def draw():
     screen.fill("#555555")
     world.draw(screen, (True, True, True))
+
     pygame.display.update()
 
 running = True
@@ -32,5 +33,6 @@ while running:
     events()
     world.tick()
     print(world.info_str())
+    
 
     draw()
