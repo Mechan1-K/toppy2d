@@ -21,6 +21,10 @@ def events():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_BACKQUOTE:
+                world.toggle_debug()
 
 def draw():
     screen.fill("#555555")
@@ -31,8 +35,6 @@ def draw():
 running = True
 while running:
     events()
-    world.tick()
-    print(world.info_str())
-    
+    world.tick()    
 
     draw()

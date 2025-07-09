@@ -5,7 +5,9 @@ from pygame.math import Vector2
 from pygame.color import Color
 import math
 
-VER = "1.1.1"
+pygame.init()
+
+VER = "1.2.1"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -73,11 +75,11 @@ def scale_nostretch(surface: pygame.Surface, target_size: tuple[int, int]):
 
     return result_surface
 
-def draw_text(surface: pygame.Surface, text: str, pos: tuple[int, int], color: Color = "#FFFFFF", size: int = 25, font_name: str = None, background_color: Color = None, antialias: bool = True):
+def draw_text(surface: pygame.Surface, text: str, pos: tuple[int, int], color: Color = "#FFFFFF", font: pygame.font.Font = pygame.font.Font(None, 25), background_color: Color = None, antialias: bool = True):
     x, y = pos
-    lines = text.split("\n")
+    lines = str(text).split("\n")
     for i in range(len(lines)):
-        surface.blit(pygame.font.Font(font_name, size).render(lines[i], antialias, color, background_color), (x, y + (i*(size-2))))
+        surface.blit(font.render(lines[i], antialias, color, background_color), (x, y + (i*(font.get_linesize()))))
 
 # endregion
 
@@ -272,7 +274,7 @@ class Group(Base):
         return working_list
     
     def info_str(self):
-        out = f"({self.type}) {self.name}"
+        out = f"({self.type}) {self.name}{f' - {self.x};{self.y}' if hasattr(self, 'x') else ''}"
         for i in range(len(self.objects)):
             for line in self.objects[i].info_str().split("\n"):
                 if i == len(self.objects)-1 and line[0] != ' ':
@@ -338,7 +340,12 @@ class World(Group):
         
         self.FPS = FPS
         self.clock = pygame.time.Clock()
+
+        self.debug = False
     
+    def toggle_debug(self):
+        self.debug = not self.debug
+
     def lock_camera(self, player_name: str):
         self.camera_lock = player_name
     
@@ -369,5 +376,11 @@ class World(Group):
         camera_pos = (self.camera_x - (surface.get_width()//2), self.camera_y - (surface.get_height()//2))
 
         super().draw(surface, camera_pos, debug_options)
+
+        if self.debug:
+            debug_output = f"""FPS: {round(self.clock.get_fps())}
+{self.info_str()}"""
+
+            draw_text(surface, debug_output, (0, 0), background_color="#000000", font=pygame.font.SysFont("Consolas", 15))
 
 #endregion
