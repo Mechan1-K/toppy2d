@@ -1,10 +1,10 @@
 import pygame
-import random
 from typing import overload
 import copy
+from pygame.math import Vector2
 import math
 
-VER = "1.0.0"
+VER = "1.1.0"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -14,17 +14,6 @@ pygame.draw.rect(NULL_SURFACE, "#000000", (50, 50, 50, 50))
 # BASIC/HELPFUL FUNCTIONS
 # ==============================================================================
 # region
-
-generated_ids = []
-def generate_id(length=8):
-    out = ""
-    while out in generated_ids:
-        out = ""
-        for _ in range(length):
-            out += random.choice("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-    
-    generated_ids.append(out)
-    return out
 
 @overload
 def load_image(path: str):
@@ -48,6 +37,90 @@ def load_image(path: str, size: tuple = None):
     else:
         raise TypeError("image size/scale must be a tuple/float/int")
 
+def scale_nostretch(surface: pygame.Surface, target_size: tuple[int, int]):
+    """
+    scale a surface to target size maintaining aspect ratio, adding black bars to top or bottom
+    """
+    target_width, target_height = target_size
+    original_width, original_height = surface.get_size()
+
+    # Calculate aspect ratios
+    original_aspect = original_width / original_height
+    target_aspect = target_width / target_height
+
+    # Determine new size
+    if original_aspect > target_aspect:
+        # Surface is wider relative to the target; fit to width
+        new_width = target_width
+        new_height = int(target_width / original_aspect)
+    else:
+        # Surface is taller relative to the target; fit to height
+        new_height = target_height
+        new_width = int(target_height * original_aspect)
+
+    # Scale surface
+    scaled_surface = pygame.transform.smoothscale(surface, (new_width, new_height))
+
+    # Create black background
+    result_surface = pygame.Surface((target_width, target_height))
+    result_surface.fill((0, 0, 0))  # Black
+
+    # Center the scaled surface
+    x = (target_width - new_width) // 2
+    y = (target_height - new_height) // 2
+    result_surface.blit(scaled_surface, (x, y))
+
+    return result_surface
+
+# endregion
+
+# ==============================================================================
+# COLLISION FUNCTIONS
+# ==============================================================================
+# region
+
+def point_line_collision(point: tuple[int, int], line_start: tuple[int, int], line_end: tuple[int, int], tolerance: int = 5):
+    p = Vector2(point)
+    a = Vector2(line_start)
+    b = Vector2(line_end)
+
+    ab = b - a
+    ap = p - a
+
+    t = max(0, min(1, ap.dot(ab) / ab.length_squared()))
+    closest = a + t * ab
+    return p.distance_to(closest) <= tolerance
+
+def circle_line_collision(circle_center: tuple[int, int], radius: int, line_start: tuple[int, int], line_end: tuple[int, int]):
+    p = Vector2(circle_center)
+    a = Vector2(line_start)
+    b = Vector2(line_end)
+
+    ab = b - a
+    ap = p - a
+
+    # Project point onto the line (clamped between 0 and 1 to stay within segment)
+    t = max(0, min(1, ap.dot(ab) / ab.length_squared()))
+    closest = a + ab * t
+
+    # Distance from circle center to closest point
+    return p.distance_to(closest) <= radius
+
+def circle_circle_collision(center1: tuple[int, int], radius1: int, center2: tuple[int, int], radius2: int):
+    # Calculate distance between centers
+    dx = center2[0] - center1[0]
+    dy = center2[1] - center1[1]
+    distance = math.hypot(dx, dy)
+
+    # Check if distance is less than or equal to sum of radii
+    return distance <= (radius1 + radius2)
+
+def line_line_collision(line_start1: tuple[int, int], line_end1: tuple[int, int], line_start2: tuple[int, int], line_end2: tuple[int, int]):
+    # Checks if line segments (a1–a2) and (b1–b2) intersect
+    def ccw(p1, p2, p3):
+        return (p3[1]-p1[1]) * (p2[0]-p1[0]) > (p2[1]-p1[1]) * (p3[0]-p1[0])
+    return ccw(line_start1, line_start2, line_end2) != ccw(line_end1, line_start2, line_end2) and ccw(line_start1, line_end1, line_start2) != ccw(line_start1, line_end1, line_end2)
+
 # endregion
 
 # ==============================================================================
@@ -55,81 +128,14 @@ def load_image(path: str, size: tuple = None):
 # ==============================================================================
 # region
 
-class Interaction:
-    player_instance = None
-    def __init__(self, x:int, y:int, title:str, key_str:str="E", key_int:pygame.key=pygame.K_e, time:int=1, activation_dist:int=20, active:bool=True):
-        self.active = active
-        self.activated = False
-
-        self.x = x
-        self.y = y
-
-        self.title = title
-        self.key = key_int
-        self.key_str = key_str
-
-        self.time = time
-        self.time_passed = 0
-        self.time_offset = 0
-
-        self.activation = activation_dist
-    
-    def draw(self, screen):
-        player = Interaction.player_instance
-
-        # compute the distance of the players center from the interaction prompt
-        # self.x - player.x + (player.size[0]//2) < self.activation and self.y - player.y + (player.size[1]//2) < self.activation 
-
-        distance = math.sqrt((self.x - (player.x + (player.size[0]//2)))**2 + (self.y - (player.y + (player.size[1]//2)))**2)
-        
-        if distance <= self.activation and self.active: # responsible for activating the prompt if proximity is maintained
-            # define frames, fonts and text
-            font = pygame.font.Font("assets/fonts/comicbd.ttf", 12)
-            bigfont = pygame.font.Font("assets/fonts/comicbd.ttf", 12)
-            text = font.render(self.title, True, "#FFFFFF")
-            
-            frame = pygame.Surface((35+text.get_width(), 30), pygame.SRCALPHA)
-
-            # draw menu
-            frame.fill("#11111199")
-
-        if pygame.key.get_pressed()[self.key] and distance <= self.activation and self.active:
-            if self.time_passed == 0:
-                self.time_offset = pygame.time.get_ticks()
-                self.time_passed = 1
-            else:
-                self.time_passed = pygame.time.get_ticks() - self.time_offset
-            
-            pygame.draw.circle(frame, "#111111", (15, 15), 10)
-            keytext = bigfont.render(self.key_str, True, "#FFFFFF")
-
-            for i in range(int(625)): # 2 * pi = 6.25, idk trigonometry, but i do know point around a circle
-                if i%5 == 0 and i <= (self.time_passed/self.time)*625:
-                    pygame.draw.rect(frame, "#FFFFFF", (15+round(math.sin(i/100)*10), 15+round(math.cos(i/100)*-10), 1, 1))
-
-            if self.time_passed >= self.time:
-                self.active = False
-                self.activated = True
-
-            frame.blit(keytext, (14-(keytext.get_width()//2), 14-(keytext.get_height()//2)))
-        elif distance <= self.activation and self.active:
-            self.time_passed = 0
-            pygame.draw.circle(frame, "#FFFFFF", (15, 15), 10)
-            keytext = bigfont.render(self.key_str, True, "#111111")
-            frame.blit(keytext, (14-(keytext.get_width()//2), 14-(keytext.get_height()//2)))
-        else:
-            self.time_passed = 0
-        
-        if distance <= self.activation and self.active:
-            frame.blit(text, (30, 5))
-
-            screen.blit(frame, (screen.get_width()//2-player.texture.get_width()//2-player.x+self.x-15,
-                                screen.get_height()//2-player.texture.get_height()//2-player.y+self.y-15))
-
-class Object:
-    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = NULL_SURFACE, collision_rect:tuple = None):
-        self.name = (self.__class__.__name__ if name == None else name)
+class Base:
+    def __init__(self, name):
         self.type = self.__class__.__name__
+        self.name = (self.__class__.__name__ if name == None else name)
+
+class Object(Base):
+    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = NULL_SURFACE, collision_rect:tuple = None):
+        super().__init__(name)
 
         self.x = x
         self.y = y
@@ -195,7 +201,7 @@ class Player(Object):
         self.x += (right - left) * self.speed
         self.y += (down - up) * self.speed
 
-class Group:
+class Group(Base):
     def __init__(self, name: str = None, objects: list[Object] = []):
         """
         A Group holds multiple Objects in one place in the code for easy identifying.
@@ -204,8 +210,8 @@ class Group:
 
         Group.get_pos() always returns (0, 0)
         """
-        self.type = self.__class__.__name__
-        self.name = (self.__class__.__name__ if name == None else name)
+        super().__init__(name)
+
         self.objects: list[Object] = objects
     
     def get_rect(self):
@@ -318,11 +324,10 @@ class Union(Group):
 
 class World(Group):
     def __init__(self, FPS=30):
-        super().__init__("World")
+        super().__init__("World", [])
         self.camera_x = 0
         self.camera_y = 0
         self.camera_lock = None
-        self.players: list[Player] = []
         
         self.FPS = FPS
         self.clock = pygame.time.Clock()
@@ -333,17 +338,6 @@ class World(Group):
     def unlock_camera(self):
         self.camera_lock = None
     
-    def players_tick(self):
-        for player in self.players:
-            if player.controls_auto:
-                player.control()
-        
-        if self.camera_lock != None:
-            for player in self.players:
-                if player.name == self.camera_lock:
-                    self.camera_x, self.camera_y = player.x + (player.surface.get_rect().w//2), player.y + (player.surface.get_rect().h//2)
-                    break
-    
     def tick(self):
         """
         Handles the following:
@@ -352,14 +346,16 @@ class World(Group):
 
         - players
         """
-
+        
         self.clock.tick(self.FPS)
-        self.players_tick()
-    
-    def extract_objects(self):
-        out = super().extract_objects()
-        out.extend(self.players)
-        return out
+        for object in self.objects:
+            if object.type == "Player":
+                if object.controls_auto:
+                    object.control()
+                
+                if object.name == self.camera_lock:
+                    self.camera_x, self.camera_y = object.x + (object.surface.get_rect().w//2), object.y + (object.surface.get_rect().h//2)
+                    break
 
     def draw(self, surface: pygame.Surface, debug_options: tuple[bool, bool, bool] = (True, False, False)):
         # center camera pos
