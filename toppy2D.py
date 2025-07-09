@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.2.0"
+VER = "1.2.1"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -186,13 +186,13 @@ class Object(Base):
                 pygame.draw.rect(surface, "#FF0000", (c[0] - camera_pos[0], c[1] - camera_pos[1], c[2], c[3]), 4)        
 
 class Player(Object):
-    def __init__(self, x, y, name = None, texture_surface = NULL_SURFACE, collision_rect = None, speed = 5, controls: list[bool, bool, bool, bool] = []):
+    def __init__(self, x, y, name = None, texture_surface = NULL_SURFACE, collision_rect = None, speed = 5, controls: list[str, str, str ,str] = []):
         """
         controls is a list with keyboard keys, examples:
 
         "w", "LEFT", "RETURN", "1", etc...
 
-        if controls is not defined, you are expected to use the move() method manually with bools
+        if controls is not defined, you are expected to use the move() method manually
         """
         super().__init__(x, y, name, texture_surface, collision_rect)
         self.speed = speed
@@ -211,7 +211,7 @@ class Player(Object):
         self.y += (down - up) * self.speed
 
 class Group(Base):
-    def __init__(self, name: str = None, objects: list[Object] = []):
+    def __init__(self, objects: list[Object] = [], name: str = None):
         """
         A Group holds multiple Objects in one place in the code for easy identifying.
 
@@ -305,7 +305,7 @@ class Group(Base):
             del working_list[smallest_index]
 
 class Union(Group):
-    def __init__(self, x: int, y: int, name = None, objects = []):
+    def __init__(self, x: int, y: int, objects = [], name = None):
         super().__init__(name, objects)
         self.x = x
         self.y = y
@@ -332,7 +332,7 @@ class Union(Group):
         self.objects = temp.copy()
 
 class World(Group):
-    def __init__(self, FPS=30):
+    def __init__(self, background_color="#000000", FPS=30):
         super().__init__("World", [])
         self.camera_x = 0
         self.camera_y = 0
@@ -341,7 +341,30 @@ class World(Group):
         self.FPS = FPS
         self.clock = pygame.time.Clock()
 
+        self.handled_events = [
+            ("QUIT", {}, exit)
+        ]
+
         self.debug = False
+        self.background_color = background_color
+    
+    def add_event_handle(self, event:str, attr_conditions:dict, func):
+        """
+        Appends a tuple (event, attr_conditions, function) to handled_events if it doesnt exist in the list
+
+        Here is what each element does lead by an example `("KEYDOWN", {"key":pygame.K_SPACE}, print)`
+
+        the above tuple:
+
+        - on World.tick() checks for event pygame.KEYDOWN
+
+        - check if the Event attributes (keys in dict) match the values of the dict
+
+        - if the above succeeds, runs print()
+        """
+
+        if (event, attr_conditions, func) not in self.handled_events:
+            self.handled_events.append((event, attr_conditions, func))
     
     def toggle_debug(self):
         self.debug = not self.debug
@@ -359,6 +382,8 @@ class World(Group):
         - maintaining FPS
 
         - players
+
+        - events (pygame.QUIT exits the program by default)
         """
         
         self.clock.tick(self.FPS)
@@ -370,11 +395,22 @@ class World(Group):
                 if object.name == self.camera_lock:
                     self.camera_x, self.camera_y = object.x + (object.surface.get_rect().w//2), object.y + (object.surface.get_rect().h//2)
                     break
+        
+        for event in pygame.event.get():
+            for handled in self.handled_events:
+                if event.type == getattr(pygame, handled[0]):
+                    proceed = True
+                    for attribute in handled[1]:
+                        if getattr(event, attribute) != handled[1][attribute]:
+                            proceed = False
+                    if proceed:
+                        handled[2]()
 
     def draw(self, surface: pygame.Surface, debug_options: tuple[bool, bool, bool] = (True, False, False)):
         # center camera pos
         camera_pos = (self.camera_x - (surface.get_width()//2), self.camera_y - (surface.get_height()//2))
 
+        surface.fill(self.background_color)
         super().draw(surface, camera_pos, debug_options)
 
         if self.debug:
@@ -382,5 +418,6 @@ class World(Group):
 {self.info_str()}"""
 
             draw_text(surface, debug_output, (0, 0), background_color="#000000", font=pygame.font.SysFont("Consolas", 15))
+        pygame.display.update()
 
 #endregion
