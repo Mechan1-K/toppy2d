@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.2.1"
+VER = "1.2.2"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -18,6 +18,7 @@ pygame.draw.rect(NULL_SURFACE, "#000000", (50, 50, 50, 50))
 # ==============================================================================
 # region
 
+# region load_image different cases
 @overload
 def load_image(path: str):
     ...
@@ -29,11 +30,11 @@ def load_image(path: str, scale: float = None):
 @overload
 def load_image(path: str, size: tuple = None):
     ...
-
+# endregion
 def load_image(path: str, size: tuple = None):
     if isinstance(size, tuple):
         return pygame.transform.scale(pygame.image.load(path), size)
-    elif isinstance(size, float):
+    elif isinstance(size, float) or isinstance(size, int):
         return pygame.transform.scale_by(pygame.image.load(path), size)
     elif size == None:
         return pygame.image.load(path)
@@ -42,36 +43,26 @@ def load_image(path: str, size: tuple = None):
 
 def scale_nostretch(surface: pygame.Surface, target_size: tuple[int, int]):
     """
-    scale a surface to target size maintaining aspect ratio, adding black bars to top or bottom
+    scale a surface to target size maintaining aspect ratio, adding black bars to vertical or horizontal edges
     """
     target_width, target_height = target_size
     original_width, original_height = surface.get_size()
 
-    # Calculate aspect ratios
     original_aspect = original_width / original_height
     target_aspect = target_width / target_height
 
-    # Determine new size
     if original_aspect > target_aspect:
-        # Surface is wider relative to the target; fit to width
         new_width = target_width
         new_height = int(target_width / original_aspect)
     else:
-        # Surface is taller relative to the target; fit to height
         new_height = target_height
         new_width = int(target_height * original_aspect)
-
-    # Scale surface
+    
     scaled_surface = pygame.transform.smoothscale(surface, (new_width, new_height))
 
-    # Create black background
     result_surface = pygame.Surface((target_width, target_height))
-    result_surface.fill((0, 0, 0))  # Black
-
-    # Center the scaled surface
-    x = (target_width - new_width) // 2
-    y = (target_height - new_height) // 2
-    result_surface.blit(scaled_surface, (x, y))
+    result_surface.fill((0, 0, 0))
+    result_surface.blit(scaled_surface, ((target_width - new_width) // 2, (target_height - new_height) // 2))
 
     return result_surface
 
@@ -306,7 +297,7 @@ class Group(Base):
 
 class Union(Group):
     def __init__(self, x: int, y: int, objects = [], name = None):
-        super().__init__(name, objects)
+        super().__init__(objects, name)
         self.x = x
         self.y = y
     
@@ -333,7 +324,7 @@ class Union(Group):
 
 class World(Group):
     def __init__(self, background_color="#000000", FPS=30):
-        super().__init__("World", [])
+        super().__init__([], "World")
         self.camera_x = 0
         self.camera_y = 0
         self.camera_lock = None

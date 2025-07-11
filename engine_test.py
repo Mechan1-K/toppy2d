@@ -3,7 +3,8 @@ from toppy2D import *
 
 pygame.init()
 
-screen = pygame.display.set_mode((500, 500))
+window = pygame.display.set_mode((500, 500), pygame.RESIZABLE)
+screen = pygame.Surface((500, 500))
 
 world = World("#555555")
 world.objects.extend([
@@ -20,3 +21,4 @@ while True:
     world.tick()    
 
     world.draw(screen, (True, True, True))
+    window.blit(scale_nostretch(screen, window.get_size()), (0, 0))
