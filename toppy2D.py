@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.2.3"
+VER = "1.2.4"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -190,6 +190,11 @@ class Player(Object):
         self.controls = controls
         self.controls_auto = True
     
+    def change_controls(self, new_controls = [None, None, None, None]):
+        for i in range(len(new_controls)):
+            if new_controls[i] != None:
+                self.controls[i] = new_controls[i]
+    
     def control(self):
         bools = []
         keys = pygame.key.get_pressed()
@@ -245,6 +250,8 @@ class Group(Base):
         for object in self.objects:
             if object.name == name:
                 out.append(object)
+        
+        return out
     
     def extract_objects(self):
         def extract(group: Group):

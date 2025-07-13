@@ -15,6 +15,7 @@ world.objects.extend([
     Player(100, 0, controls=["y", "h", "g", "j"], name="ziom")
 ])
 world.lock_camera("guy")
+world.add_event_handle("KEYDOWN", {"key": pygame.K_SPACE}, lambda: world.get_objects_by_name("guy")[0].change_controls(["q"]))
 
 while True:
     world.tick()    
