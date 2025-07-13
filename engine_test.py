@@ -15,7 +15,6 @@ world.objects.extend([
     Player(100, 0, controls=["y", "h", "g", "j"], name="ziom")
 ])
 world.lock_camera("guy")
-world.add_event_handle("KEYDOWN", {"key": pygame.K_BACKQUOTE}, world.toggle_debug)
 
 while True:
     world.tick()    

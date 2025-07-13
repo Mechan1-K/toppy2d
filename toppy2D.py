@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.2.2"
+VER = "1.2.3"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -333,7 +333,8 @@ class World(Group):
         self.clock = pygame.time.Clock()
 
         self.handled_events = [
-            ("QUIT", {}, exit)
+            ("QUIT", {}, exit),
+            ("KEYDOWN", {"key": pygame.K_BACKQUOTE}, self.toggle_debug)
         ]
 
         self.debug = False
