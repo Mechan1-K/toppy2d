@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.2.4"
+VER = "1.2.5"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -177,7 +177,7 @@ class Object(Base):
                 pygame.draw.rect(surface, "#FF0000", (c[0] - camera_pos[0], c[1] - camera_pos[1], c[2], c[3]), 4)        
 
 class Player(Object):
-    def __init__(self, x, y, name = None, texture_surface = NULL_SURFACE, collision_rect = None, speed = 5, controls: list[str, str, str ,str] = []):
+    def __init__(self, x, y, name = None, texture_surface = NULL_SURFACE, collision_rect = None, speed = 5, controls: list[str, str, str, str] = []):
         """
         controls is a list with keyboard keys, examples:
 
@@ -188,7 +188,6 @@ class Player(Object):
         super().__init__(x, y, name, texture_surface, collision_rect)
         self.speed = speed
         self.controls = controls
-        self.controls_auto = True
     
     def change_controls(self, new_controls = [None, None, None, None]):
         for i in range(len(new_controls)):
@@ -245,10 +244,21 @@ class Group(Base):
             colliders.extend(object.get_colliders())
         return colliders
 
-    def get_objects_by_name(self, name: str):
+    def get_objects_by_attr(self, attr, value):
+        """
+        a multiple in one!
+
+        you can get by name, type, x, etc.
+
+        example usage:
+
+        get_objects_by_attr("type", "Player")
+
+        gets all objects in the group of type player.
+        """
         out = []
         for object in self.objects:
-            if object.name == name:
+            if getattr(object, attr) == value:
                 out.append(object)
         
         return out
@@ -388,12 +398,11 @@ class World(Group):
         self.clock.tick(self.FPS)
         for object in self.objects:
             if object.type == "Player":
-                if object.controls_auto:
+                if len(object.controls) >= 4:
                     object.control()
                 
                 if object.name == self.camera_lock:
                     self.camera_x, self.camera_y = object.x + (object.surface.get_rect().w//2), object.y + (object.surface.get_rect().h//2)
-                    break
         
         for event in pygame.event.get():
             for handled in self.handled_events:
