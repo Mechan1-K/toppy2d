@@ -7,11 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.3.0"
-NULL_SURFACE = pygame.Surface((100, 100))
-NULL_SURFACE.fill("#FF00FF")
-pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
-pygame.draw.rect(NULL_SURFACE, "#000000", (50, 50, 50, 50))
+VER = "1.3.1"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -40,6 +36,14 @@ def load_image(path: str, size: tuple = None):
         return pygame.image.load(path)
     else:
         raise TypeError("image size/scale must be a tuple/float/int")
+
+def template_surface(color1 = "#FF00FF", color2 = "#000000", size = (100, 100)) -> pygame.Surface:
+    surface = pygame.Surface(size)
+    surface.fill(color1)
+    pygame.draw.rect(surface, color2, (0, 0, surface.get_width()//2, surface.get_height()//2))
+    pygame.draw.rect(surface, color2, (surface.get_width()//2, surface.get_height()//2, surface.get_width(), surface.get_height()))
+
+    return surface
 
 def scale_nostretch(surface: pygame.Surface, target_size: tuple[int, int]):
     """
@@ -141,7 +145,7 @@ class Base:
         self.name = (self.__class__.__name__ if name == None else name)
 
 class Object(Base):
-    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = NULL_SURFACE, collision_rect:tuple = None):
+    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = template_surface(), collision_rect:tuple = None):
         super().__init__(name)
 
         self.x = x
@@ -176,7 +180,8 @@ class Object(Base):
         """
         return f"({self.type}) {self.name} - {self.x};{self.y}"
     
-    def draw(self, surface: pygame.Surface, camera_pos: tuple[int, int], debug_options: tuple[bool, bool, bool] = (True, False, False)) -> None:
+    def draw(self, surface: pygame.Surface, debug_options: tuple[bool, bool, bool] = (True, False, False)) -> None:
+        camera_pos = (World.world_instance.camera_x - (surface.get_width()//2), World.world_instance.camera_y - (surface.get_height()//2))
         if debug_options[0]:
             surface.blit(apply_alpha(self.surface, self.opacity), (self.x - camera_pos[0], self.y - camera_pos[1]))
         if debug_options[2]:
@@ -187,7 +192,7 @@ class Object(Base):
            
 
 class Player(Object):
-    def __init__(self, x, y, name = None, texture_surface = NULL_SURFACE, collision_rect = None, speed: int = 5, controls: list[str, str, str, str] = []):
+    def __init__(self, x, y, name = None, texture_surface = template_surface(), collision_rect = None, speed: int = 5, controls: list[str, str, str, str] = []):
         """
         controls is a list with keyboard keys, examples:
 
@@ -355,7 +360,7 @@ class Group(Base):
         
         return out
 
-    def draw(self, surface: pygame.Surface, camera_pos, debug_options: tuple[bool, bool, bool] = (True, False, False)):
+    def draw(self, surface: pygame.Surface, debug_options: tuple[bool, bool, bool] = (True, False, False)):
         working_list = self.extract_objects()
         length = len(working_list)
         
@@ -368,7 +373,7 @@ class Group(Base):
                     smallest = working_list[i]
                     smallest_index = i
 
-            smallest.draw(surface, camera_pos, debug_options)
+            smallest.draw(surface, debug_options)
             del working_list[smallest_index]
 
 class Union(Group):
@@ -396,7 +401,7 @@ class Union(Group):
     def draw(self, surface, camera_pos, debug_options = (True, False, False)):
         temp = self.objects.copy()
         self.objects = self.transform_objects()
-        super().draw(surface, camera_pos, debug_options)
+        super().draw(surface, debug_options)
         self.objects = temp.copy()
 
 class World(Group):
@@ -482,7 +487,7 @@ class World(Group):
         camera_pos = (self.camera_x - (surface.get_width()//2), self.camera_y - (surface.get_height()//2))
 
         surface.fill(self.background_color)
-        super().draw(surface, camera_pos, debug_options)
+        super().draw(surface, debug_options)
 
         if self.debug:
             debug_output = f"""FPS: {round(self.clock.get_fps())}
