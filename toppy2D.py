@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.2.6"
+VER = "1.3.0"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -179,15 +179,15 @@ class Object(Base):
     def draw(self, surface: pygame.Surface, camera_pos: tuple[int, int], debug_options: tuple[bool, bool, bool] = (True, False, False)) -> None:
         if debug_options[0]:
             surface.blit(apply_alpha(self.surface, self.opacity), (self.x - camera_pos[0], self.y - camera_pos[1]))
-        if debug_options[1]:
-            pygame.draw.rect(surface, "#FF00FF", (self.x - camera_pos[0], self.y - camera_pos[1], self.surface.get_width(), self.surface.get_height()), 3)
         if debug_options[2]:
-            colliders = self.get_colliders()
-            for c in colliders:
-                pygame.draw.rect(surface, "#FF0000", (c[0] - camera_pos[0], c[1] - camera_pos[1], c[2], c[3]), 4)        
+            c = self.get_colliders()[0]
+            pygame.draw.rect(surface, "#FF0000", (c[0] - camera_pos[0], c[1] - camera_pos[1], c[2], c[3]), 4)
+        if debug_options[1]:
+            pygame.draw.rect(surface, "#FFFF00", (self.x - camera_pos[0], self.y - camera_pos[1], self.surface.get_width(), self.surface.get_height()), 2)
+           
 
 class Player(Object):
-    def __init__(self, x, y, name = None, texture_surface = NULL_SURFACE, collision_rect = None, speed = 5, controls: list[str, str, str, str] = []):
+    def __init__(self, x, y, name = None, texture_surface = NULL_SURFACE, collision_rect = None, speed: int = 5, controls: list[str, str, str, str] = []):
         """
         controls is a list with keyboard keys, examples:
 
@@ -212,8 +212,18 @@ class Player(Object):
         self.move(*bools)
 
     def move(self, up: bool, down: bool, left: bool, right: bool):
-        self.x += (right - left) * self.speed
-        self.y += (down - up) * self.speed
+        colliders = Group(World.world_instance.get_objects_by_not_attr("type", "Player")).get_colliders()
+        for _ in range(self.speed):
+            self.x += (right - left)
+            if pygame.Rect(self.get_colliders()[0]).collidelist(colliders) != -1:
+                self.x -= (right - left)
+                break
+
+        for _ in range(self.speed):
+            self.y += (down - up)
+            if pygame.Rect(self.get_colliders()[0]).collidelist(colliders) != -1:
+                self.y -= (down - up)
+                break
 
 class Group(Base):
     def __init__(self, objects: list[Object] = [], name: str = None):
@@ -272,6 +282,17 @@ class Group(Base):
                 out.append(object)
         
         return out
+
+    def get_objects_by_not_attr(self, attribute, value):
+        """
+        works the same as get_objects_by_attr, except only takes objects that dont match attribute
+        """
+        out = []
+        for object in self.objects:
+            if getattr(object, attribute) != value:
+                out.append(object)
+        
+        return out
     
     def get_objects_by_attrs(self, attributes_values: dict):
         """
@@ -282,6 +303,20 @@ class Group(Base):
             passes = True
             for attr in attributes_values:
                 if getattr(object, attr) != attributes_values[attr]:
+                    passes = False
+            if passes:
+                out.append(object)
+        return out
+    
+    def get_objects_by_not_attrs(self, attributes_values: dict):
+        """
+        works the same as get_objects_by_attrs, but only takes objects that dont match all the attributes
+        """
+        out = []
+        for object in self.objects:
+            passes = True
+            for attr in attributes_values:
+                if getattr(object, attr) == attributes_values[attr]:
                     passes = False
             if passes:
                 out.append(object)
@@ -354,8 +389,9 @@ class Union(Group):
     def get_colliders(self):
         temp = self.objects.copy()
         self.objects = self.transform_objects()
-        super().get_colliders()
+        out = super().get_colliders()
         self.objects = temp.copy()
+        return out
     
     def draw(self, surface, camera_pos, debug_options = (True, False, False)):
         temp = self.objects.copy()
@@ -364,6 +400,7 @@ class Union(Group):
         self.objects = temp.copy()
 
 class World(Group):
+    world_instance = None
     def __init__(self, background_color="#000000", FPS=30):
         super().__init__([], "World")
         self.camera_x = 0
@@ -380,6 +417,8 @@ class World(Group):
 
         self.debug = False
         self.background_color = background_color
+
+        World.world_instance = self
     
     def add_event_handle(self, event:str, attr_conditions:dict, func):
         """
