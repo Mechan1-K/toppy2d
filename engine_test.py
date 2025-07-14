@@ -15,9 +15,9 @@ world.objects.extend([
     Player(100, 0, controls=["y", "h", "g", "j"], name="ziom")
 ])
 world.lock_camera("guy")
-
+guy = world.get_objects_by_attrs({"name": "guy", "type": "Player"})[0]
 while True:
-    world.tick()    
+    world.tick()
 
     world.draw(screen, (True, True, True))
     window.blit(scale_nostretch(screen, window.get_size()), (0, 0))

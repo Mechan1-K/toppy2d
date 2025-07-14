@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.2.5"
+VER = "1.2.6"
 NULL_SURFACE = pygame.Surface((100, 100))
 NULL_SURFACE.fill("#FF00FF")
 pygame.draw.rect(NULL_SURFACE, "#000000", (0, 0, 50, 50))
@@ -65,6 +65,13 @@ def scale_nostretch(surface: pygame.Surface, target_size: tuple[int, int]):
     result_surface.blit(scaled_surface, ((target_width - new_width) // 2, (target_height - new_height) // 2))
 
     return result_surface
+
+def apply_alpha(surface: pygame.Surface, alpha: int):
+    new = surface.convert_alpha()
+    alpha_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+    alpha_surface.fill((255, 255, 255, alpha))
+    new.blit(alpha_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    return new
 
 def draw_text(surface: pygame.Surface, text: str, pos: tuple[int, int], color: Color = "#FFFFFF", font: pygame.font.Font = pygame.font.Font(None, 25), background_color: Color = None, antialias: bool = True):
     x, y = pos
@@ -139,6 +146,9 @@ class Object(Base):
 
         self.x = x
         self.y = y
+
+        self.opacity = 255
+        self.solid = True
         
         self.surface = texture_surface
         self.collider = collision_rect
@@ -168,7 +178,7 @@ class Object(Base):
     
     def draw(self, surface: pygame.Surface, camera_pos: tuple[int, int], debug_options: tuple[bool, bool, bool] = (True, False, False)) -> None:
         if debug_options[0]:
-            surface.blit(self.surface, (self.x - camera_pos[0], self.y - camera_pos[1]))
+            surface.blit(apply_alpha(self.surface, self.opacity), (self.x - camera_pos[0], self.y - camera_pos[1]))
         if debug_options[1]:
             pygame.draw.rect(surface, "#FF00FF", (self.x - camera_pos[0], self.y - camera_pos[1], self.surface.get_width(), self.surface.get_height()), 3)
         if debug_options[2]:
@@ -244,7 +254,7 @@ class Group(Base):
             colliders.extend(object.get_colliders())
         return colliders
 
-    def get_objects_by_attr(self, attr, value):
+    def get_objects_by_attr(self, attribute, value):
         """
         a multiple in one!
 
@@ -258,11 +268,25 @@ class Group(Base):
         """
         out = []
         for object in self.objects:
-            if getattr(object, attr) == value:
+            if getattr(object, attribute) == value:
                 out.append(object)
         
         return out
     
+    def get_objects_by_attrs(self, attributes_values: dict):
+        """
+        works the same as get_objects_by_attr, but with multiple attributes as keys, and their values as values, in a dict
+        """
+        out = []
+        for object in self.objects:
+            passes = True
+            for attr in attributes_values:
+                if getattr(object, attr) != attributes_values[attr]:
+                    passes = False
+            if passes:
+                out.append(object)
+        return out
+
     def extract_objects(self):
         def extract(group: Group):
             out = []
