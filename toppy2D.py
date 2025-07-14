@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.3.1"
+VER = "1.4.0"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -37,7 +37,7 @@ def load_image(path: str, size: tuple = None):
     else:
         raise TypeError("image size/scale must be a tuple/float/int")
 
-def template_surface(color1 = "#FF00FF", color2 = "#000000", size = (100, 100)) -> pygame.Surface:
+def placeholder(color1 = "#FF00FF", color2 = "#000000", size = (100, 100)) -> pygame.Surface:
     surface = pygame.Surface(size)
     surface.fill(color1)
     pygame.draw.rect(surface, color2, (0, 0, surface.get_width()//2, surface.get_height()//2))
@@ -145,7 +145,7 @@ class Base:
         self.name = (self.__class__.__name__ if name == None else name)
 
 class Object(Base):
-    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = template_surface(), collision_rect:tuple = None):
+    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = placeholder(), collision_rect:tuple = None):
         super().__init__(name)
 
         self.x = x
@@ -180,19 +180,20 @@ class Object(Base):
         """
         return f"({self.type}) {self.name} - {self.x};{self.y}"
     
-    def draw(self, surface: pygame.Surface, debug_options: tuple[bool, bool, bool] = (True, False, False)) -> None:
-        camera_pos = (World.world_instance.camera_x - (surface.get_width()//2), World.world_instance.camera_y - (surface.get_height()//2))
+    def draw(self, surface: pygame.Surface):
+        debug_options = World.world_instance.draw_debug
+        offset_x, offset_y = World.world_instance.surface.get_width()//2, World.world_instance.surface.get_height()//2
         if debug_options[0]:
-            surface.blit(apply_alpha(self.surface, self.opacity), (self.x - camera_pos[0], self.y - camera_pos[1]))
+            surface.blit(apply_alpha(self.surface, self.opacity), (self.x + offset_x, self.y + offset_y))
         if debug_options[2]:
-            c = self.get_colliders()[0]
-            pygame.draw.rect(surface, "#FF0000", (c[0] - camera_pos[0], c[1] - camera_pos[1], c[2], c[3]), 4)
+            collider = self.get_colliders()[0]
+            pygame.draw.rect(surface, "#FF0000", (collider[0] + offset_x, collider[1] + offset_y, *collider[2:]), 4)
         if debug_options[1]:
-            pygame.draw.rect(surface, "#FFFF00", (self.x - camera_pos[0], self.y - camera_pos[1], self.surface.get_width(), self.surface.get_height()), 2)
+            pygame.draw.rect(surface, "#FFFF00", (self.x + offset_x, self.y + offset_y, self.surface.get_width(), self.surface.get_height()), 2)
            
 
 class Player(Object):
-    def __init__(self, x, y, name = None, texture_surface = template_surface(), collision_rect = None, speed: int = 5, controls: list[str, str, str, str] = []):
+    def __init__(self, x, y, name = None, texture_surface = placeholder(), collision_rect = None, speed: int = 5, controls: list[str, str, str, str] = []):
         """
         controls is a list with keyboard keys, examples:
 
@@ -218,15 +219,16 @@ class Player(Object):
 
     def move(self, up: bool, down: bool, left: bool, right: bool):
         colliders = Group(World.world_instance.get_objects_by_not_attr("type", "Player")).get_colliders()
+        world_size = World.world_instance.surface.get_size()
         for _ in range(self.speed):
             self.x += (right - left)
-            if pygame.Rect(self.get_colliders()[0]).collidelist(colliders) != -1:
+            if pygame.Rect(self.get_colliders()[0]).collidelist(colliders) != -1 or not -(world_size[0]//2) < self.get_colliders()[0][0] < world_size[0]//2 - self.get_colliders()[0][2]:
                 self.x -= (right - left)
                 break
 
         for _ in range(self.speed):
             self.y += (down - up)
-            if pygame.Rect(self.get_colliders()[0]).collidelist(colliders) != -1:
+            if pygame.Rect(self.get_colliders()[0]).collidelist(colliders) != -1 or not -(world_size[1]//2) < self.get_colliders()[0][1] < world_size[1]//2 - self.get_colliders()[0][3]:
                 self.y -= (down - up)
                 break
 
@@ -360,7 +362,7 @@ class Group(Base):
         
         return out
 
-    def draw(self, surface: pygame.Surface, debug_options: tuple[bool, bool, bool] = (True, False, False)):
+    def draw(self, surface: pygame.Surface):
         working_list = self.extract_objects()
         length = len(working_list)
         
@@ -373,7 +375,7 @@ class Group(Base):
                     smallest = working_list[i]
                     smallest_index = i
 
-            smallest.draw(surface, debug_options)
+            smallest.draw(surface)
             del working_list[smallest_index]
 
 class Union(Group):
@@ -398,16 +400,19 @@ class Union(Group):
         self.objects = temp.copy()
         return out
     
-    def draw(self, surface, camera_pos, debug_options = (True, False, False)):
+    def draw(self, surface):
         temp = self.objects.copy()
         self.objects = self.transform_objects()
-        super().draw(surface, debug_options)
+        super().draw(surface)
         self.objects = temp.copy()
 
 class World(Group):
     world_instance = None
-    def __init__(self, background_color="#000000", FPS=30):
+    def __init__(self, size: tuple[int, int] = (1000, 1000), background_color="#000000", FPS=30):
         super().__init__([], "World")
+
+        self.surface = pygame.Surface(size)
+
         self.camera_x = 0
         self.camera_y = 0
         self.camera_lock = None
@@ -417,10 +422,11 @@ class World(Group):
 
         self.handled_events = [
             ("QUIT", {}, exit),
-            ("KEYDOWN", {"key": pygame.K_BACKQUOTE}, self.toggle_debug)
+            ("KEYDOWN", {"key": pygame.K_BACKQUOTE}, lambda: self.toggle_debug((True, True, True)))
         ]
 
         self.debug = False
+        self.draw_debug = (True, False, False)
         self.background_color = background_color
 
         World.world_instance = self
@@ -443,7 +449,9 @@ class World(Group):
         if (event, attr_conditions, func) not in self.handled_events:
             self.handled_events.append((event, attr_conditions, func))
     
-    def toggle_debug(self):
+    def toggle_debug(self, draw_options = None):
+        if draw_options != None:
+            self.draw_debug = draw_options
         self.debug = not self.debug
 
     def lock_camera(self, player_name: str):
@@ -482,18 +490,20 @@ class World(Group):
                     if proceed:
                         handled[2]()
 
-    def draw(self, surface: pygame.Surface, debug_options: tuple[bool, bool, bool] = (True, False, False)):
-        # center camera pos
-        camera_pos = (self.camera_x - (surface.get_width()//2), self.camera_y - (surface.get_height()//2))
+    def draw(self, surface: pygame.Surface):
+        surface.fill("#000000")
 
-        surface.fill(self.background_color)
-        super().draw(surface, debug_options)
+        self.surface.fill(self.background_color)
+        super().draw(self.surface)
+        surface.blit(self.surface, (-self.camera_x + surface.get_width()//2 - self.surface.get_width()//2,
+                                    -self.camera_y + surface.get_height()//2 - self.surface.get_height()//2))
 
         if self.debug:
             debug_output = f"""FPS: {round(self.clock.get_fps())}
 {self.info_str()}"""
+            draw_text(surface, debug_output, (1, 1), background_color="#000000", font=pygame.font.SysFont("Consolas", 15))
 
-            draw_text(surface, debug_output, (0, 0), background_color="#000000", font=pygame.font.SysFont("Consolas", 15))
+
         pygame.display.update()
 
 #endregion

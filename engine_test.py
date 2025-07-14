@@ -6,8 +6,8 @@ pygame.init()
 window = pygame.display.set_mode((500, 500), pygame.RESIZABLE)
 screen = pygame.Surface((500, 500))
 
-world = World("#555555")
-player = Player(0, 0, controls=["w", "s", "a", "d"], name="guy", collision_rect=(0, 70, 100, 30), texture_surface=template_surface("#00FFFF"))
+world = World(background_color="#555555")
+player = Player(0, 0, controls=["w", "s", "a", "d"], name="guy", collision_rect=(0, 70, 100, 30), texture_surface=placeholder("#00FFFF"))
 world.objects.extend([
     Object(100, 100, "regular"),
     Group(objects=[Object(200, 200, "in group 1"), Object(305, 200, "in group 2")]),
@@ -21,5 +21,5 @@ guy = world.get_objects_by_attrs({"name": "guy", "type": "Player"})[0]
 while True:
     world.tick()
 
-    world.draw(screen, (True, True, True))
+    world.draw(screen)
     window.blit(scale_nostretch(screen, window.get_size()), (0, 0))
