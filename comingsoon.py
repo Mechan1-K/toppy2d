@@ -4,7 +4,7 @@ import math
 # interactions
 # fully customizable dialog boxes
 # some sort of way to handle windows easily, maybe an optionally used ready Game() class
-
+# optimizations to player collisions
 
 class Interaction:
     def __init__(self, x:int, y:int, title:str, key_str:str="E", key_int:pygame.key=pygame.K_e, time:int=1, activation_dist:int=20, active:bool=True):

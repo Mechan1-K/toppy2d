@@ -3,11 +3,11 @@ from toppy2D import *
 
 pygame.init()
 
-window = pygame.display.set_mode((500, 500), pygame.RESIZABLE)
-screen = pygame.Surface((500, 500))
+screen = pygame.display.set_mode((500, 500), pygame.RESIZABLE)
 
 world = World(background_color="#555555")
 player = Player(0, 0, controls=["w", "s", "a", "d"], name="guy", collision_rect=(0, 70, 100, 30), texture_surface=placeholder("#00FFFF"))
+
 world.objects.extend([
     Object(100, 100, "regular"),
     Group(objects=[Object(200, 200, "in group 1"), Object(305, 200, "in group 2")]),
@@ -22,4 +22,3 @@ while True:
     world.tick()
 
     world.draw(screen)
-    window.blit(scale_nostretch(screen, window.get_size()), (0, 0))

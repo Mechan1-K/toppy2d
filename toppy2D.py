@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.4.0"
+VER = "1.4.1"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -415,6 +415,8 @@ class World(Group):
 
         self.camera_x = 0
         self.camera_y = 0
+        self.camera_zoom = 1
+        self.CAMERA_ZOOM_MIN = 0.01
         self.camera_lock = None
         
         self.FPS = FPS
@@ -422,7 +424,7 @@ class World(Group):
 
         self.handled_events = [
             ("QUIT", {}, exit),
-            ("KEYDOWN", {"key": pygame.K_BACKQUOTE}, lambda: self.toggle_debug((True, True, True)))
+            ("KEYDOWN", {"key": pygame.K_BACKQUOTE}, self.toggle_debug)
         ]
 
         self.debug = False
@@ -449,10 +451,9 @@ class World(Group):
         if (event, attr_conditions, func) not in self.handled_events:
             self.handled_events.append((event, attr_conditions, func))
     
-    def toggle_debug(self, draw_options = None):
-        if draw_options != None:
-            self.draw_debug = draw_options
+    def toggle_debug(self):
         self.debug = not self.debug
+        self.draw_debug = (True, True, True) if self.debug else (True, False, False)
 
     def lock_camera(self, player_name: str):
         self.camera_lock = player_name
@@ -491,15 +492,21 @@ class World(Group):
                         handled[2]()
 
     def draw(self, surface: pygame.Surface):
+        if self.camera_zoom < self.CAMERA_ZOOM_MIN:
+            self.camera_zoom = self.CAMERA_ZOOM_MIN
+
         surface.fill("#000000")
 
         self.surface.fill(self.background_color)
         super().draw(self.surface)
-        surface.blit(self.surface, (-self.camera_x + surface.get_width()//2 - self.surface.get_width()//2,
-                                    -self.camera_y + surface.get_height()//2 - self.surface.get_height()//2))
+        surface.blit(pygame.transform.scale_by(self.surface, self.camera_zoom), (
+            (-self.camera_x - self.surface.get_width()//2)*self.camera_zoom + surface.get_width()//2,
+            (-self.camera_y - self.surface.get_height()//2)*self.camera_zoom + surface.get_height()//2
+        ))
 
         if self.debug:
             debug_output = f"""FPS: {round(self.clock.get_fps())}
+camera: ({self.camera_x}, {self.camera_y}), x{self.camera_zoom}, locked on "{self.camera_lock}"
 {self.info_str()}"""
             draw_text(surface, debug_output, (1, 1), background_color="#000000", font=pygame.font.SysFont("Consolas", 15))
 
