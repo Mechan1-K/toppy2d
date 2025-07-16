@@ -1,10 +1,12 @@
 import pygame
 import math
 
-# interactions
-# fully customizable dialog boxes
+# ! interactions
 # some sort of way to handle windows easily, maybe an optionally used ready Game() class
 # optimizations to player collisions
+# ! add Player inventory and item class
+# ! tile maps
+# ! GUI extension
 
 class Interaction:
     def __init__(self, x:int, y:int, title:str, key_str:str="E", key_int:pygame.key=pygame.K_e, time:int=1, activation_dist:int=20, active:bool=True):
@@ -75,87 +77,3 @@ class Interaction:
 
             screen.blit(frame, (screen.get_width()//2-player.texture.get_width()//2-player.x+self.x-15,
                                 screen.get_height()//2-player.texture.get_height()//2-player.y+self.y-15))
-            
-class DialogBox:
-    def __init__(self):
-        self.title = ""
-
-        self.visible = False
-        self.to_show = ""
-        self.showing = ""
-
-        self.typewriter_stage = 0
-        self.typewriter_finished = False
-
-        self.setDefaults()
-
-    def setDefaults(self):
-        """
-        set all styling attributes to default values
-        """
-        # its all here so you can configure it later with eg. instance.text_color = "#FF0000" or instance.BG_color = color.RED
-        self.title_font = pygame.font.Font("assets/fonts/comicbd.ttf", 24)
-        self.desc_font = pygame.font.Font("assets/fonts/comic.ttf", 16)
-        self.skip_font = pygame.font.Font("assets/fonts/comici.ttf", 12)
-        self.typewrite_step = 1
-        self.BG_color = "#000000"
-        self.title_color = "#EEEEEE"
-        self.text_color = "#FFFFFF"
-        self.border_color = "#FFFFFF"
-
-    def showText(self, title:str, text:str):
-        """
-        Shows dialog box, and automatically starts the typewriting effect.
-        """
-        self.hideText()
-        self.title = title
-        self.visible = True
-        self.to_show = text
-        self.typewriter_finished = False
-
-    def hideText(self):
-        """
-        Hides dialog box
-        """
-        self.visible = False
-        self.title = ""
-        self.to_show = ""
-        self.showing = ""
-        self.typewriter_stage = 0
-        self.typewriter_finished = False # did it finish typing?
-
-    def skip(self):
-        """
-        Skips typewriting effect if it's still going, if typewriter already finished executes hideText()
-        """
-        if self.typewriter_stage < len(self.to_show):
-            self.showing = self.to_show
-            self.typewriter_stage = len(self.to_show)
-        else:
-            self.hideText()
-
-    def draw(self, screen:pygame.Surface):
-        if self.visible:
-            # progresses dialog typewriter effect
-            if self.typewriter_stage < len(self.to_show):
-                self.typewriter_stage += 1
-                self.showing = self.to_show[:self.typewriter_stage]
-            else:
-                self.typewriter_finished = True
-
-
-            # draw dialog box
-            pygame.draw.rect(screen, self.BG_color, (5, 400, 790, 195), 0, 20)
-            pygame.draw.rect(screen, self.border_color, (5, 400, 790, 195), 3, 20)
-
-            # draw text
-            screen.blit(self.title_font.render(self.title, True, self.title_color), (20, 415))
-            description = self.showing.split("\n")
-            for i in range(len(description)):
-                screen.blit(self.desc_font.render(description[i], True, self.text_color), (30, 455 + 22*i))
-
-            # draw skip hint text
-            if self.typewriter_finished:
-                screen.blit(self.skip_font.render("Press 'SPACE' to close...", True, "#EEEEEE"), (630, 569))
-            else:
-                screen.blit(self.skip_font.render("Press 'SPACE' to skip...", True, "#EEEEEE"), (630, 569))

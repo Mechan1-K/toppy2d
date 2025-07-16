@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.4.1"
+VER = "1.5.0"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -135,7 +135,130 @@ def line_line_collision(line_start1: tuple[int, int], line_end1: tuple[int, int]
 # endregion
 
 # ==============================================================================
-# CLASSES
+# GUI
+# ==============================================================================
+# region
+
+class DialogBox:
+    def __init__(self):
+        self.title = ""
+
+        self.visible = False
+        self.buffer_text = ""
+        self.showing_text = ""
+
+        self.typewriter_stage = 0
+        self.typewriter_finished = False
+        self.typewrite_step = 1
+
+        self.set_defaults()
+
+    def set_defaults(self):
+        """
+        set all styling attributes to default values
+        """
+        # its all here so you can configure it later with eg. instance.text_color = "#FF0000" or instance.BG_color = color.RED
+        self.title_font = pygame.font.Font(size=30)
+        self.desc_font = pygame.font.Font(size=20)
+        self.skip_font = pygame.font.Font(size=18)
+        self.line_gap = 3
+        
+        self.BG_color = "#000000"
+        self.title_color = "#EEEEEE"
+        self.text_color = "#FFFFFF"
+        self.skip_color = "#BBBBBB"
+        self.border_color = "#FFFFFF"
+
+        self.padding = 15
+        self.border_offset = 5
+        self.border_radius = 20
+        self.border_width = 3
+        self.height = 200
+
+        self.skip_key = "SPACE"
+
+    def set_config(self, config: dict):
+        for key in config:
+            setattr(self, key, config[key])
+
+    def show_text(self, title:str, text:str):
+        """
+        Shows dialog box, and automatically starts the typewriting effect.
+        """
+        self.hide()
+        self.title = title
+        self.visible = True
+        self.buffer_text = text
+        self.typewriter_finished = False
+
+    def hide(self):
+        """
+        Hides dialog box
+        """
+        self.visible = False
+        self.title = ""
+        self.buffer_text = ""
+        self.showing_text = ""
+        self.typewriter_stage = 0
+        self.typewriter_finished = True # did it finish typing?
+
+    def skip(self):
+        """
+        Skips typewriting effect if it's still going, if typewriter already finished executes hideText()
+        """
+        if self.typewriter_stage < len(self.buffer_text):
+            self.showing_text = self.buffer_text
+            self.typewriter_stage = len(self.buffer_text)
+        else:
+            self.hide()
+
+    def draw(self, screen:pygame.Surface):
+        if self.visible:
+            # progresses dialog typewriter effect
+            if self.typewriter_stage < len(self.buffer_text):
+                self.typewriter_stage += self.typewrite_step
+                self.showing_text = self.buffer_text[:self.typewriter_stage]
+            else:
+                self.typewriter_finished = True
+
+
+            # draw dialog box
+
+            rect = (
+                self.border_offset, screen.get_height() - self.border_offset*2 - self.height,
+                screen.get_width()-self.border_offset*2, self.height
+            )
+            pygame.draw.rect(screen, self.BG_color, rect, 0, self.border_radius)
+            pygame.draw.rect(screen, self.border_color, rect, self.border_width, self.border_radius)
+
+            # draw text
+            screen.blit(self.title_font.render(self.title, True, self.title_color), (self.border_offset + self.padding, screen.get_height() - self.border_offset*2 - self.height + self.padding))
+            description = self.showing_text.split("\n")
+            for i in range(len(description)):
+                screen.blit(self.desc_font.render(description[i], True, self.text_color), (
+                    self.border_offset + self.padding,
+                    (screen.get_height() - self.border_offset*2 - self.height + self.padding + self.title_font.get_height() + self.line_gap) + (self.desc_font.get_height()+self.line_gap)*i
+                ))
+
+            # draw skip hint text
+            skip_text_width, skip_text_height = self.skip_font.render(f"Press '{self.skip_key}' to close...", True, self.skip_color).get_size()
+            placement = (
+                screen.get_width() - self.border_offset - self.padding - skip_text_width,
+                screen.get_height() - self.border_offset - self.padding - skip_text_height
+            )
+            if self.typewriter_finished:
+                screen.blit(self.skip_font.render(f"Press '{self.skip_key}' to close...", True, self.skip_color), placement)
+            else:
+                screen.blit(self.skip_font.render(f"Press '{self.skip_key}' to skip...", True, self.skip_color), placement)
+
+class GUI:
+    def __init__(self):
+        self.dialog = DialogBox()
+
+# endregion
+
+# ==============================================================================
+# OBJECTS
 # ==============================================================================
 # region
 
@@ -143,6 +266,11 @@ class Base:
     def __init__(self, name):
         self.type = self.__class__.__name__
         self.name = (self.__class__.__name__ if name == None else name)
+
+# ==============================================================================
+# SINGULAR
+# ==============================================================================
+# region
 
 class Object(Base):
     def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = placeholder(), collision_rect:tuple = None):
@@ -231,6 +359,13 @@ class Player(Object):
             if pygame.Rect(self.get_colliders()[0]).collidelist(colliders) != -1 or not -(world_size[1]//2) < self.get_colliders()[0][1] < world_size[1]//2 - self.get_colliders()[0][3]:
                 self.y -= (down - up)
                 break
+
+# endregion
+
+# ==============================================================================
+# GROUP
+# ==============================================================================
+# region
 
 class Group(Base):
     def __init__(self, objects: list[Object] = [], name: str = None):
@@ -406,6 +541,12 @@ class Union(Group):
         super().draw(surface)
         self.objects = temp.copy()
 
+# endregion
+
+# ==============================================================================
+# 「THE WORLD」
+# ==============================================================================
+
 class World(Group):
     world_instance = None
     def __init__(self, size: tuple[int, int] = (1000, 1000), background_color="#000000", FPS=30):
@@ -418,13 +559,15 @@ class World(Group):
         self.camera_zoom = 1
         self.CAMERA_ZOOM_MIN = 0.01
         self.camera_lock = None
+
+        self.GUI = GUI()
         
         self.FPS = FPS
         self.clock = pygame.time.Clock()
 
         self.handled_events = [
             ("QUIT", {}, exit),
-            ("KEYDOWN", {"key": pygame.K_BACKQUOTE}, self.toggle_debug)
+            ("KEYDOWN", {"key": pygame.K_BACKQUOTE}, self.toggle_debug),
         ]
 
         self.debug = False
@@ -469,7 +612,9 @@ class World(Group):
 
         - players
 
-        - events (pygame.QUIT exits the program by default)
+        - events (pygame.QUIT exits the program by default, pygame.KEYDOWN and key is pygame.K_BACKQUOTE toggles debug)
+
+        - dialog skip (!WATCH OUT! - SPACE by default)
         """
         
         self.clock.tick(self.FPS)
@@ -490,6 +635,8 @@ class World(Group):
                             proceed = False
                     if proceed:
                         handled[2]()
+            if event.type == pygame.KEYDOWN and event.key == getattr(pygame, f"K_{self.GUI.dialog.skip_key}"):
+                self.GUI.dialog.skip()
 
     def draw(self, surface: pygame.Surface):
         if self.camera_zoom < self.CAMERA_ZOOM_MIN:
@@ -503,6 +650,8 @@ class World(Group):
             (-self.camera_x - self.surface.get_width()//2)*self.camera_zoom + surface.get_width()//2,
             (-self.camera_y - self.surface.get_height()//2)*self.camera_zoom + surface.get_height()//2
         ))
+
+        self.GUI.dialog.draw(surface)
 
         if self.debug:
             debug_output = f"""FPS: {round(self.clock.get_fps())}

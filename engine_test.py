@@ -3,7 +3,7 @@ from toppy2D import *
 
 pygame.init()
 
-screen = pygame.display.set_mode((500, 500), pygame.RESIZABLE)
+screen = pygame.display.set_mode((700, 500), pygame.RESIZABLE)
 
 world = World(background_color="#555555")
 player = Player(0, 0, controls=["w", "s", "a", "d"], name="guy", collision_rect=(0, 70, 100, 30), texture_surface=placeholder("#00FFFF"))
@@ -17,6 +17,7 @@ world.objects.extend([
 ])
 world.lock_camera("guy")
 guy = world.get_objects_by_attrs({"name": "guy", "type": "Player"})[0]
+world.add_event_handle("KEYDOWN", {"key": pygame.K_1}, lambda: world.GUI.dialog.show_text("THIS IS TEST", "hello everybody my name is Markiplier!\nAnd in todays video we will be testing out the length of this dialog box and see if it is big or not at all!"))
 
 while True:
     world.tick()
