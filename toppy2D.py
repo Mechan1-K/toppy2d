@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.5.0"
+VER = "1.5.1"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -158,9 +158,16 @@ class DialogBox:
         set all styling attributes to default values
         """
         # its all here so you can configure it later with eg. instance.text_color = "#FF0000" or instance.BG_color = color.RED
-        self.title_font = pygame.font.Font(size=30)
-        self.desc_font = pygame.font.Font(size=20)
-        self.skip_font = pygame.font.Font(size=18)
+        bold = pygame.font.SysFont("arial", 30)
+        bold.set_bold(True)
+        self.title_font = bold
+
+        self.desc_font = pygame.font.SysFont("arial", 20)
+
+        italic = pygame.font.SysFont("arial", 14)
+        italic.set_italic(True)
+        self.skip_font = italic
+
         self.line_gap = 3
         
         self.BG_color = "#000000"
@@ -176,8 +183,34 @@ class DialogBox:
         self.height = 200
 
         self.skip_key = "SPACE"
-
+    
     def set_config(self, config: dict):
+        """
+        Here are the default settings, and attributes you can modify:
+
+        **fonts:**
+        - title_font = arial, size 30, bold
+        - desc_font = arial, size 20
+        - skip_font = arial, size 14, italic
+        - line_gap = 3
+        
+        **colors:**
+        - BG_color = "#000000"
+        - title_color = "#EEEEEE"
+        - text_color = "#FFFFFF"
+        - skip_color = "#BBBBBB"
+        - border_color = "#FFFFFF"
+
+        **dimensions:**
+        - padding = 15
+        - border_offset = 5
+        - border_radius = 20
+        - border_width = 3
+        - height = 200
+
+        **misc:**
+        - skip_key = "SPACE"
+        """
         for key in config:
             setattr(self, key, config[key])
 
@@ -217,7 +250,7 @@ class DialogBox:
             # progresses dialog typewriter effect
             if self.typewriter_stage < len(self.buffer_text):
                 self.typewriter_stage += self.typewrite_step
-                self.showing_text = self.buffer_text[:self.typewriter_stage]
+                self.showing_text = self.buffer_text[:int(self.typewriter_stage)]
             else:
                 self.typewriter_finished = True
 
