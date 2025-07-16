@@ -16,10 +16,18 @@ world.objects.extend([
     Player(100, 0, controls=["y", "h", "g", "j"], name="ziom")
 ])
 world.lock_camera("guy")
-guy = world.get_objects_by_attrs({"name": "guy", "type": "Player"})[0]
+guy = world.get_by_attrs({"name": "guy", "type": "Player"})
+
 world.GUI.dialog.typewrite_step = 0.2
 world.add_event_handle("KEYDOWN", {"key": pygame.K_1}, lambda: world.GUI.dialog.show_text("Markiplier", "hello everybody my name is Markiplier!\nAnd in todays video we will be testing out the length of this dialog box and see if it is big or not at all!"))
-print(pygame.font.get_fonts())
+
+world.GUI.add_child(Frame(
+    (0.5, 0, 0.5, 0), (0.5, 0, 0.5, 0), (0.5, 0.5), "TestFrame",
+    [SurfaceBox(
+        (0.5, 0, 0.5, 0), (0.5, 0, 0.5, 0), (0.5, 0.5), "TestFrameInFrame", [], stretch=False
+    )]
+))
+
 while True:
     world.tick()
 

@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.5.1"
+VER = "1.6.0"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -64,8 +64,7 @@ def scale_nostretch(surface: pygame.Surface, target_size: tuple[int, int]):
     
     scaled_surface = pygame.transform.smoothscale(surface, (new_width, new_height))
 
-    result_surface = pygame.Surface((target_width, target_height))
-    result_surface.fill((0, 0, 0))
+    result_surface = pygame.Surface((target_width, target_height), pygame.SRCALPHA)
     result_surface.blit(scaled_surface, ((target_width - new_width) // 2, (target_height - new_height) // 2))
 
     return result_surface
@@ -139,7 +138,7 @@ def line_line_collision(line_start1: tuple[int, int], line_end1: tuple[int, int]
 # ==============================================================================
 # region
 
-class DialogBox:
+class Dialog:
     def __init__(self):
         self.title = ""
 
@@ -284,9 +283,96 @@ class DialogBox:
             else:
                 screen.blit(self.skip_font.render(f"Press '{self.skip_key}' to skip...", True, self.skip_color), placement)
 
+class GUIObject:
+    def __init__(self, position: tuple[float, int, float, int], size: tuple[float, int, float, int], anchor_point: tuple[float, float] = (0, 0), name: str = None, children: list["GUIObject"] = None):
+        self.position = position
+        self.size = size
+        self.anchor_point = anchor_point
+
+        self.children: list[GUIObject] = children if children != None else []
+
+        self.type = self.__class__.__name__
+        self.name = name if name != None else self.__class__.__name__
+
+    def get_all_by_type(self, type):
+        out = []
+        for object in self.children:
+            if object.type == type:
+                out.append(object)
+        return out
+    
+    def get_by_type(self, type):
+        for object in self.children:
+            if object.type == type:
+                return object
+    
+    def get_all_by_name(self, name):
+        out = []
+        for object in self.children:
+            if object.name == name:
+                out.append(object)
+        return out
+    
+    def get_by_name(self, name):
+        for object in self.children:
+            if object.name == name:
+                return object
+
+    def add_child(self, child: "GUIObject"):
+        self.children.append(child)
+
+    def prepare(self, surface: pygame.Surface, position: tuple[int, int]):
+        pass
+
+    def draw(self, surface: pygame.Surface):
+        size = (
+            surface.get_width()*self.size[0] + self.size[1],
+            surface.get_height()*self.size[2] + self.size[3]
+        )
+
+        position = (
+            surface.get_width()*self.position[0] + self.position[1] - self.anchor_point[0]*size[0],
+            surface.get_height()*self.position[2] + self.position[3] - self.anchor_point[1]*size[1]
+        )
+
+        element = pygame.Surface(size, pygame.SRCALPHA)
+
+        self.prepare(element, position)
+
+        for child in self.children:
+            child.draw(element)
+        
+        surface.blit(element, position)
+
+class Frame(GUIObject):
+    def __init__(self, position, size, anchor_point = (0, 0), name = None, children = None, background_color = "#FFFFFF"):
+        super().__init__(position, size, anchor_point, name, children)
+        self.background_color = background_color     
+    
+    def prepare(self, surface: pygame.Surface, position: tuple[int, int]):
+        surface.fill(self.background_color)
+
+class SurfaceBox(GUIObject):
+    def __init__(self, position, size, anchor_point = (0, 0), name = None, children = None, surface: pygame.Surface = None, stretch: bool = True):
+        super().__init__(position, size, anchor_point, name, children)
+        self.surface = surface if surface != None else placeholder()
+        self.stretch = stretch
+    
+    def prepare(self, surface, position):
+        surface.blit(pygame.transform.scale(self.surface, surface.get_size()) if self.stretch else scale_nostretch(self.surface, surface.get_size()), (0, 0))
+
 class GUI:
     def __init__(self):
-        self.dialog = DialogBox()
+        self.dialog = Dialog()
+
+        self.objects: list[GUIObject] = []
+    
+    def add_child(self, child):
+        self.objects.append(child)
+    
+    def draw(self, surface):
+        for object in self.objects:
+            object.draw(surface)
 
 # endregion
 
@@ -306,7 +392,7 @@ class Base:
 # region
 
 class Object(Base):
-    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = placeholder(), collision_rect:tuple = None):
+    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = None, collision_rect:tuple = None):
         super().__init__(name)
 
         self.x = x
@@ -315,7 +401,7 @@ class Object(Base):
         self.opacity = 255
         self.solid = True
         
-        self.surface = texture_surface
+        self.surface = texture_surface if texture_surface != None else placeholder()
         self.collider = collision_rect
     
     def get_rect(self):
@@ -354,7 +440,7 @@ class Object(Base):
            
 
 class Player(Object):
-    def __init__(self, x, y, name = None, texture_surface = placeholder(), collision_rect = None, speed: int = 5, controls: list[str, str, str, str] = []):
+    def __init__(self, x, y, name = None, texture_surface = None, collision_rect = None, speed: int = 5, controls: list[str, str, str, str] = None):
         """
         controls is a list with keyboard keys, examples:
 
@@ -364,7 +450,7 @@ class Player(Object):
         """
         super().__init__(x, y, name, texture_surface, collision_rect)
         self.speed = speed
-        self.controls = controls
+        self.controls = controls if controls != None else []
     
     def change_controls(self, new_controls = [None, None, None, None]):
         for i in range(len(new_controls)):
@@ -379,7 +465,7 @@ class Player(Object):
         self.move(*bools)
 
     def move(self, up: bool, down: bool, left: bool, right: bool):
-        colliders = Group(World.world_instance.get_objects_by_not_attr("type", "Player")).get_colliders()
+        colliders = Group(World.world_instance.get_all_by_not_attr("type", "Player")).get_colliders()
         world_size = World.world_instance.surface.get_size()
         for _ in range(self.speed):
             self.x += (right - left)
@@ -401,17 +487,17 @@ class Player(Object):
 # region
 
 class Group(Base):
-    def __init__(self, objects: list[Object] = [], name: str = None):
-        """
-        A Group holds multiple Objects in one place in the code for easy identifying.
+    """
+    A Group holds multiple Objects in one place in the code for easy identifying.
 
-        Objects in the group are not relative to any position, they are all free to move around separately.
+    Objects in the group are not relative to any position, they are all free to move around separately.
 
-        Group.get_pos() always returns (0, 0)
-        """
+    Group.get_pos() always returns (0, 0)
+    """
+    def __init__(self, objects: list[Object], name: str = None):
         super().__init__(name)
 
-        self.objects: list[Object] = objects
+        self.objects: list[Object] = objects if objects != None else []
     
     def get_rect(self):
         if not self.objects:
@@ -439,7 +525,7 @@ class Group(Base):
             colliders.extend(object.get_colliders())
         return colliders
 
-    def get_objects_by_attr(self, attribute, value):
+    def get_all_by_attr(self, attribute, value):
         """
         a multiple in one!
 
@@ -458,7 +544,12 @@ class Group(Base):
         
         return out
 
-    def get_objects_by_not_attr(self, attribute, value):
+    def get_by_attr(self, attribute, value):
+        for object in self.objects:
+            if getattr(object, attribute) == value:
+                return object
+
+    def get_all_by_not_attr(self, attribute, value):
         """
         works the same as get_objects_by_attr, except only takes objects that dont match attribute
         """
@@ -469,7 +560,12 @@ class Group(Base):
         
         return out
     
-    def get_objects_by_attrs(self, attributes_values: dict):
+    def get_by_not_attr(self, attribute, value):
+        for object in self.objects:
+            if getattr(object, attribute) != value:
+                return object
+    
+    def get_all_by_attrs(self, attributes_values: dict):
         """
         works the same as get_objects_by_attr, but with multiple attributes as keys, and their values as values, in a dict
         """
@@ -482,8 +578,17 @@ class Group(Base):
             if passes:
                 out.append(object)
         return out
+
+    def get_by_attrs(self, attributes_values: dict):
+        for object in self.objects:
+            passes = True
+            for attr in attributes_values:
+                if getattr(object, attr) != attributes_values[attr]:
+                    passes = False
+            if passes:
+                return object
     
-    def get_objects_by_not_attrs(self, attributes_values: dict):
+    def get_all_by_not_attrs(self, attributes_values: dict):
         """
         works the same as get_objects_by_attrs, but only takes objects that dont match all the attributes
         """
@@ -497,6 +602,15 @@ class Group(Base):
                 out.append(object)
         return out
 
+    def get_by_not_attrs(self, attributes_values: dict):
+        for object in self.objects:
+            passes = True
+            for attr in attributes_values:
+                if getattr(object, attr) == attributes_values[attr]:
+                    passes = False
+            if passes:
+                return object
+            
     def extract_objects(self):
         def extract(group: Group):
             out = []
@@ -547,7 +661,7 @@ class Group(Base):
             del working_list[smallest_index]
 
 class Union(Group):
-    def __init__(self, x: int, y: int, objects = [], name = None):
+    def __init__(self, x: int, y: int, objects = None, name = None):
         super().__init__(objects, name)
         self.x = x
         self.y = y
@@ -683,6 +797,8 @@ class World(Group):
             (-self.camera_x - self.surface.get_width()//2)*self.camera_zoom + surface.get_width()//2,
             (-self.camera_y - self.surface.get_height()//2)*self.camera_zoom + surface.get_height()//2
         ))
+
+        self.GUI.draw(surface)
 
         self.GUI.dialog.draw(surface)
 
