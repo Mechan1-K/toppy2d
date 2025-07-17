@@ -23,8 +23,8 @@ world.add_event_handle("KEYDOWN", {"key": pygame.K_1}, lambda: world.GUI.dialog.
 
 world.GUI.add_child(Frame(
     (0.5, 0, 0.5, 0), (0.5, 0, 0.5, 0), (0.5, 0.5), "TestFrame",
-    [SurfaceButton(
-        (0.5, 0, 0.5, 0), (0.5, 0, 0.5, 0), (0.5, 0.5), "TestFrameInFrame", [], onclick=lambda: print("clicked")
+    [TextButton(
+        (0.5, 0, 0.5, 0), (0.5, 0, 0.5, 0), (0.5, 0.5), "TestFrameInFrame", [], background_color="#FF0000"
     )]
 ))
 

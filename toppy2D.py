@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.7.0"
+VER = "1.8.0"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -368,6 +368,22 @@ class SurfaceBox(GUIObject):
     def prepare(self, surface: pygame.Surface, position):
         surface.blit(pygame.transform.scale(self.surface, surface.get_size()) if self.stretch else scale_nostretch(self.surface, surface.get_size()), (0, 0))
 
+class TextLabel(SurfaceBox):
+    def __init__(self, position, size, anchor_point=(0, 0), name=None, children=None, text: str = "TextLabel", color = "#000000", background_color = "#FFFFFF"):
+        self.text = text
+        self.color = color
+        self.background_color = background_color
+        self.font = pygame.font.SysFont("arial", 25)
+        self.padding = 2
+        
+        super().__init__(position, size, anchor_point, name, children)
+    
+    def prepare(self, surface, position):
+        self.surface = pygame.Surface(surface.get_size())
+        self.surface.fill(self.background_color)
+        draw_text(self.surface, self.text, (self.padding, self.padding), self.color, self.font)
+        super().prepare(surface, position)
+
 class SurfaceButton(SurfaceBox):
     def __init__(self, position, size, anchor_point=(0, 0), name=None, children=None, surface = None, onclick = lambda: None, stretch = True):
         super().__init__(position, size, anchor_point, name, children, surface, stretch)
@@ -399,6 +415,22 @@ class SurfaceButton(SurfaceBox):
             super().prepare(surface, position)
 
         self.lastpressed = self.pressed
+
+class TextButton(SurfaceButton):
+    def __init__(self, position, size, anchor_point=(0, 0), name=None, children=None, text: str = "TextLabel", color = "#000000", background_color = "#FFFFFF", onclick = lambda: None):
+        self.text = text
+        self.color = color
+        self.background_color = background_color
+        self.font = pygame.font.SysFont("arial", 25)
+        self.padding = 2
+
+        super().__init__(position, size, anchor_point, name, children, None, onclick)
+
+    def prepare(self, surface, position):
+        self.surface = pygame.Surface(surface.get_size())
+        self.surface.fill(self.background_color)
+        draw_text(self.surface, self.text, (self.padding, self.padding), self.color, self.font)
+        super().prepare(surface, position)
 
 class GUI:
     def __init__(self):
