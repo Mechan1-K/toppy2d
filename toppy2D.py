@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.8.0"
+VER = "1.8.1"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -298,6 +298,7 @@ class GUIObject:
 
         self.children: list[GUIObject] = children if children != None else []
 
+        self.hidden = False
         self.type = self.__class__.__name__
         self.name = name if name != None else self.__class__.__name__
 
@@ -332,6 +333,8 @@ class GUIObject:
         pass
 
     def draw(self, surface: pygame.Surface, position_offset: tuple[int, int] = (0, 0)):
+        if self.hidden:
+            return
         size = (
             surface.get_width()*self.size[0] + self.size[1],
             surface.get_height()*self.size[2] + self.size[3]
