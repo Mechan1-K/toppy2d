@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.6.0"
+VER = "1.7.0"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -75,6 +75,13 @@ def apply_alpha(surface: pygame.Surface, alpha: int):
     alpha_surface.fill((255, 255, 255, alpha))
     new.blit(alpha_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
     return new
+
+def overlay_colour(surface: pygame.Surface, RGB_color, strength: int):
+    copy = surface.copy()
+    dark_overlay = pygame.Surface(copy.get_size()).convert_alpha()
+    dark_overlay.fill((*RGB_color, strength))
+    copy.blit(dark_overlay, (0, 0))
+    return copy
 
 def draw_text(surface: pygame.Surface, text: str, pos: tuple[int, int], color: Color = "#FFFFFF", font: pygame.font.Font = pygame.font.Font(None, 25), background_color: Color = None, antialias: bool = True):
     x, y = pos
@@ -324,7 +331,7 @@ class GUIObject:
     def prepare(self, surface: pygame.Surface, position: tuple[int, int]):
         pass
 
-    def draw(self, surface: pygame.Surface):
+    def draw(self, surface: pygame.Surface, position_offset: tuple[int, int] = (0, 0)):
         size = (
             surface.get_width()*self.size[0] + self.size[1],
             surface.get_height()*self.size[2] + self.size[3]
@@ -337,10 +344,10 @@ class GUIObject:
 
         element = pygame.Surface(size, pygame.SRCALPHA)
 
-        self.prepare(element, position)
+        self.prepare(element, (position[0] + position_offset[0], position[1] + position_offset[1]))
 
         for child in self.children:
-            child.draw(element)
+            child.draw(element, (position[0] + position_offset[0], position[1] + position_offset[1]))
         
         surface.blit(element, position)
 
@@ -358,8 +365,40 @@ class SurfaceBox(GUIObject):
         self.surface = surface if surface != None else placeholder()
         self.stretch = stretch
     
-    def prepare(self, surface, position):
+    def prepare(self, surface: pygame.Surface, position):
         surface.blit(pygame.transform.scale(self.surface, surface.get_size()) if self.stretch else scale_nostretch(self.surface, surface.get_size()), (0, 0))
+
+class SurfaceButton(SurfaceBox):
+    def __init__(self, position, size, anchor_point=(0, 0), name=None, children=None, surface = None, onclick = lambda: None, stretch = True):
+        super().__init__(position, size, anchor_point, name, children, surface, stretch)
+        self.pressed = False
+        self.hovering = False
+        self.lastpressed = False
+        self.onclick = onclick
+
+        self.hover_intensity = 30
+        self.click_intensity = 60
+
+    def prepare(self, surface, position):
+        mouse = pygame.mouse.get_pos()
+        self.hovering = surface.get_rect().collidepoint(mouse[0] - position[0], mouse[1] - position[1])
+        self.pressed = pygame.mouse.get_pressed()[0] and surface.get_rect().collidepoint(mouse[0] - position[0], mouse[1] - position[1])
+        
+        if self.hovering:
+            temp = self.surface.copy()
+            if self.pressed:
+                self.surface = overlay_colour(self.surface, (0, 0, 0), self.click_intensity)
+                if not self.lastpressed:
+                    self.onclick()
+            else:
+                self.surface = overlay_colour(self.surface, (0, 0, 0), self.hover_intensity)
+            super().prepare(surface, position)
+            self.surface = temp.copy()
+            
+        else:
+            super().prepare(surface, position)
+
+        self.lastpressed = self.pressed
 
 class GUI:
     def __init__(self):
