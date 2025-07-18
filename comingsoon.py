@@ -6,7 +6,8 @@ import math
 # optimizations to player collisions
 # ! add Player inventory and item class
 # ! tile maps
-# ! GUI extension
+# ! better GUI sizes maybe add automatic aspect ratios
+# GUI editor
 
 class Interaction:
     def __init__(self, x:int, y:int, title:str, key_str:str="E", key_int:pygame.key=pygame.K_e, time:int=1, activation_dist:int=20, active:bool=True):

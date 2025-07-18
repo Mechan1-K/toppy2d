@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.8.1"
+VER = "1.8.2"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -302,26 +302,32 @@ class GUIObject:
         self.type = self.__class__.__name__
         self.name = name if name != None else self.__class__.__name__
 
-    def get_all_by_type(self, type):
+    def toggle(self, on_off: bool = None):
+        if on_off == None:
+            self.hidden = not self.hidden
+        else:
+            self.hidden = not on_off
+
+    def get_all_by_type(self, type) -> list["GUIObject"]:
         out = []
         for object in self.children:
             if object.type == type:
                 out.append(object)
         return out
     
-    def get_by_type(self, type):
+    def get_by_type(self, type) -> "GUIObject":
         for object in self.children:
             if object.type == type:
                 return object
     
-    def get_all_by_name(self, name):
+    def get_all_by_name(self, name) -> list["GUIObject"]:
         out = []
         for object in self.children:
             if object.name == name:
                 out.append(object)
         return out
     
-    def get_by_name(self, name):
+    def get_by_name(self, name) -> "GUIObject":
         for object in self.children:
             if object.name == name:
                 return object
@@ -439,13 +445,37 @@ class GUI:
     def __init__(self):
         self.dialog = Dialog()
 
-        self.objects: list[GUIObject] = []
+        self.children: list[GUIObject] = []
     
     def add_child(self, child):
-        self.objects.append(child)
+        self.children.append(child)
     
+    def get_all_by_type(self, type) -> list["GUIObject"]:
+        out = []
+        for object in self.children:
+            if object.type == type:
+                out.append(object)
+        return out
+    
+    def get_by_type(self, type) -> "GUIObject":
+        for object in self.children:
+            if object.type == type:
+                return object
+    
+    def get_all_by_name(self, name) -> list["GUIObject"]:
+        out = []
+        for object in self.children:
+            if object.name == name:
+                out.append(object)
+        return out
+    
+    def get_by_name(self, name) -> "GUIObject":
+        for object in self.children:
+            if object.name == name:
+                return object
+
     def draw(self, surface):
-        for object in self.objects:
+        for object in self.children:
             object.draw(surface)
 
 # endregion

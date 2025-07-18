@@ -21,12 +21,20 @@ guy = world.get_by_attrs({"name": "guy", "type": "Player"})
 world.GUI.dialog.typewrite_step = 0.2
 world.add_event_handle("KEYDOWN", {"key": pygame.K_1}, lambda: world.GUI.dialog.show_text("Markiplier", "hello everybody my name is Markiplier!\nAnd in todays video we will be testing out the length of this dialog box and see if it is big or not at all!"))
 
-world.GUI.add_child(Frame(
-    (0.5, 0, 0.5, 0), (0.5, 0, 0.5, 0), (0.5, 0.5), "TestFrame",
-    [TextButton(
-        (0.5, 0, 0.5, 0), (0.5, 0, 0.5, 0), (0.5, 0.5), "TestFrameInFrame", [], background_color="#FF0000"
-    )]
-))
+world.GUI.add_child(
+    Frame((0.5, 0, 0.5, 0), (0.5, 0, 0.5, 0), (0.5, 0.5), "Menu", [
+        TextButton(
+            (1, -30, 0, 0), (0, 30, 0, 30), (0, 0), "Exit", [], "X", background_color="#FF0000"
+        )
+    ])
+)
+world.GUI.get_by_name("Menu").get_by_name("Exit").onclick = lambda: world.GUI.get_by_name("Menu").toggle(False)
+
+world.GUI.add_child(
+    TextButton((0, 0, 0.5, 0), (0, 100, 0, 30), (0, 0.5),
+               "OpenMenu", None, "Menu", background_color="#11CCEE", onclick=world.GUI.get_by_name("Menu").toggle
+    )
+)
 
 while True:
     world.tick()
