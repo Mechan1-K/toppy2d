@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.8.2"
+VER = "1.8.3"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -478,6 +478,8 @@ class GUI:
         for object in self.children:
             object.draw(surface)
 
+        self.dialog.draw(surface)
+
 # endregion
 
 # ==============================================================================
@@ -489,6 +491,9 @@ class Base:
     def __init__(self, name):
         self.type = self.__class__.__name__
         self.name = (self.__class__.__name__ if name == None else name)
+    
+    def log(self, text: str):
+        print(f"[{self.name}] {text}")
 
 # ==============================================================================
 # SINGULAR
@@ -570,7 +575,7 @@ class Player(Object):
 
     def move(self, up: bool, down: bool, left: bool, right: bool):
         colliders = Group(World.world_instance.get_all_by_not_attr("type", "Player")).get_colliders()
-        world_size = World.world_instance.surface.get_size()
+        world_size = World.world_instance.size
         for _ in range(self.speed):
             self.x += (right - left)
             if pygame.Rect(self.get_colliders()[0]).collidelist(colliders) != -1 or not -(world_size[0]//2) < self.get_colliders()[0][0] < world_size[0]//2 - self.get_colliders()[0][2]:
@@ -803,13 +808,14 @@ class World(Group):
     def __init__(self, size: tuple[int, int] = (1000, 1000), background_color="#000000", FPS=30):
         super().__init__([], "World")
 
-        self.surface = pygame.Surface(size)
-
+        self.size = size
+        self.surface = pygame.Surface((self.size[0]+1000, self.size[1]+1000))
+        
         self.camera_x = 0
         self.camera_y = 0
         self.camera_zoom = 1
-        self.CAMERA_ZOOM_MIN = 0.01
-        self.camera_lock = None
+        self.camera_zoom_limits = (0.8, 1.3)
+        self.focused_on = None
 
         self.GUI = GUI()
         
@@ -826,6 +832,8 @@ class World(Group):
         self.background_color = background_color
 
         World.world_instance = self
+        self.log("World initialized. Have fun using Toppy2D!")
+        self.log("Remember the keys assigned by default: BACKQUOTE (handled_events, toggles debug), SPACE (dialog skip, World.GUI.dialog.skip_key)")
     
     def add_event_handle(self, event:str, attr_conditions:dict, func):
         """
@@ -849,11 +857,17 @@ class World(Group):
         self.debug = not self.debug
         self.draw_debug = (True, True, True) if self.debug else (True, False, False)
 
-    def lock_camera(self, player_name: str):
-        self.camera_lock = player_name
+    def focus_on(self, object: Object):
+        self.focused_on = object
     
-    def unlock_camera(self):
-        self.camera_lock = None
+    def unfocus(self):
+        self.focused_on = None
+    
+    def set_zoom(self, amount: float = 1):
+        self.camera_zoom = amount
+    
+    def change_zoom(self, amount):
+        self.camera_zoom += amount
     
     def tick(self):
         """
@@ -871,12 +885,15 @@ class World(Group):
         self.clock.tick(self.FPS)
         for object in self.objects:
             if object.type == "Player":
+                # player controls
                 if len(object.controls) >= 4:
                     object.control()
                 
-                if object.name == self.camera_lock:
-                    self.camera_x, self.camera_y = object.x + (object.surface.get_rect().w//2), object.y + (object.surface.get_rect().h//2)
+                # camera lock
+
+        self.camera_x, self.camera_y = self.focused_on.x + (self.focused_on.surface.get_rect().w//2), self.focused_on.y + (self.focused_on.surface.get_rect().h//2)
         
+        # handling events
         for event in pygame.event.get():
             for handled in self.handled_events:
                 if event.type == getattr(pygame, handled[0]):
@@ -886,29 +903,33 @@ class World(Group):
                             proceed = False
                     if proceed:
                         handled[2]()
+            
+            # handle dialog skip event specifically
             if event.type == pygame.KEYDOWN and event.key == getattr(pygame, f"K_{self.GUI.dialog.skip_key}"):
                 self.GUI.dialog.skip()
 
     def draw(self, surface: pygame.Surface):
-        if self.camera_zoom < self.CAMERA_ZOOM_MIN:
-            self.camera_zoom = self.CAMERA_ZOOM_MIN
-
+        if self.camera_zoom < self.camera_zoom_limits[0]:
+            self.camera_zoom = self.camera_zoom_limits[0]
+        if self.camera_zoom > self.camera_zoom_limits[1]:
+            self.camera_zoom = self.camera_zoom_limits[1]
+        
         surface.fill("#000000")
+        self.surface.fill("#000000")
 
-        self.surface.fill(self.background_color)
+        pygame.draw.rect(self.surface, self.background_color, (self.surface.get_width()//2 - self.size[0]//2, self.surface.get_height()//2 - self.size[1]//2, *self.size))
+
         super().draw(self.surface)
-        surface.blit(pygame.transform.scale_by(self.surface, self.camera_zoom), (
-            (-self.camera_x - self.surface.get_width()//2)*self.camera_zoom + surface.get_width()//2,
-            (-self.camera_y - self.surface.get_height()//2)*self.camera_zoom + surface.get_height()//2
+        surface.blit(pygame.transform.scale_by(self.surface, self.camera_zoom**3), (
+            (-self.camera_x - self.surface.get_width()//2)*(self.camera_zoom**3) + surface.get_width()//2,
+            (-self.camera_y - self.surface.get_height()//2)*(self.camera_zoom**3) + surface.get_height()//2
         ))
 
         self.GUI.draw(surface)
 
-        self.GUI.dialog.draw(surface)
-
         if self.debug:
             debug_output = f"""FPS: {round(self.clock.get_fps())}
-camera: ({self.camera_x}, {self.camera_y}), x{self.camera_zoom}, locked on "{self.camera_lock}"
+camera: ({self.camera_x}, {self.camera_y}), x{self.camera_zoom}, focused on "{self.focused_on.name}" ({self.focused_on.type})
 {self.info_str()}"""
             draw_text(surface, debug_output, (1, 1), background_color="#000000", font=pygame.font.SysFont("Consolas", 15))
 
