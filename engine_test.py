@@ -5,7 +5,7 @@ pygame.init()
 
 screen = pygame.display.set_mode((700, 500), pygame.RESIZABLE)
 
-world = World(background_color="#555555", size=(1000, 200))
+world = World(background_color="#555555", size=(3000, 200))
 player = Player(0, 0, controls=["w", "s", "a", "d"], name="guy", collision_rect=(0, 70, 100, 30), texture_surface=placeholder("#00FFFF"))
 
 world.objects.extend([
@@ -19,9 +19,8 @@ world.focus_on(player)
 guy = world.get_by_attrs({"name": "guy", "type": "Player"})
 
 world.GUI.dialog.typewrite_step = 0.2
-world.add_event_handle("KEYDOWN", {"key": pygame.K_1}, lambda: world.GUI.dialog.show_text("Markiplier", "hello everybody my name is Markiplier!\nAnd in todays video we will be testing out the length of this dialog box and see if it is big or not at all!"))
-world.add_event_handle("KEYDOWN", {"key": pygame.K_UP}, lambda: world.change_zoom(-0.05))
-world.add_event_handle("KEYDOWN", {"key": pygame.K_DOWN}, lambda: world.change_zoom(0.05))
+world.add_event_handle(pygame.KEYDOWN, {"key": pygame.K_1}, lambda _: world.GUI.dialog.show_text("Markiplier", "hello everybody my name is Markiplier!\nAnd in todays video we will be testing out the length of this dialog box and see if it is big or not at all!"))
+world.add_event_handle(pygame.MOUSEWHEEL, {}, lambda event: world.change_zoom(0.05*event.y))
 
 world.GUI.add_child(
     Frame((0.5, 0, 0.5, 0), (0.5, 0, 0.5, 0), (0.5, 0.5), "Menu", [
@@ -42,5 +41,5 @@ world.GUI.get_by_name("Menu").hidden = True
 
 while True:
     world.tick()
-
+    world.debug_value("test", world.camera_zoom_limits)
     world.draw(screen)

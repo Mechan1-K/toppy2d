@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.8.3"
+VER = "1.8.4"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -549,7 +549,7 @@ class Object(Base):
            
 
 class Player(Object):
-    def __init__(self, x, y, name = None, texture_surface = None, collision_rect = None, speed: int = 5, controls: list[str, str, str, str] = None):
+    def __init__(self, x, y, name = None, texture_surface = None, collision_rect = None, speed: int = 8, controls: list[str, str, str, str] = None):
         """
         controls is a list with keyboard keys, examples:
 
@@ -823,13 +823,15 @@ class World(Group):
         self.clock = pygame.time.Clock()
 
         self.handled_events = [
-            ("QUIT", {}, exit),
-            ("KEYDOWN", {"key": pygame.K_BACKQUOTE}, self.toggle_debug),
+            (pygame.QUIT, {}, lambda _: exit()),
+            (pygame.KEYDOWN, {"key": pygame.K_BACKQUOTE}, lambda _: self.toggle_debug()),
         ]
 
         self.debug = False
         self.draw_debug = (True, False, False)
         self.background_color = background_color
+
+        self.additional_debug = {}
 
         World.world_instance = self
         self.log("World initialized. Have fun using Toppy2D!")
@@ -869,15 +871,24 @@ class World(Group):
     def change_zoom(self, amount):
         self.camera_zoom += amount
     
+    def debug_value(self, name: str, value):
+        self.additional_debug[name] = value
+    
+    def debug_values(self, values: dict):
+        for key in values:
+            self.additional_debug[key] = values[key]
+    
     def tick(self):
         """
+        
+
         Handles the following:
 
         - maintaining FPS
 
         - players
 
-        - events (pygame.QUIT exits the program by default, pygame.KEYDOWN and key is pygame.K_BACKQUOTE toggles debug)
+        - events, passes event object to function on call (pygame.QUIT exits the program by default, pygame.KEYDOWN and key is pygame.K_BACKQUOTE toggles debug)
 
         - dialog skip (!WATCH OUT! - SPACE by default)
         """
@@ -896,13 +907,13 @@ class World(Group):
         # handling events
         for event in pygame.event.get():
             for handled in self.handled_events:
-                if event.type == getattr(pygame, handled[0]):
+                if event.type == handled[0]:
                     proceed = True
                     for attribute in handled[1]:
                         if getattr(event, attribute) != handled[1][attribute]:
                             proceed = False
                     if proceed:
-                        handled[2]()
+                        handled[2](event)
             
             # handle dialog skip event specifically
             if event.type == pygame.KEYDOWN and event.key == getattr(pygame, f"K_{self.GUI.dialog.skip_key}"):
@@ -914,6 +925,8 @@ class World(Group):
         if self.camera_zoom > self.camera_zoom_limits[1]:
             self.camera_zoom = self.camera_zoom_limits[1]
         
+        self.camera_zoom = round(self.camera_zoom*100)/100
+
         surface.fill("#000000")
         self.surface.fill("#000000")
 
@@ -930,9 +943,12 @@ class World(Group):
         if self.debug:
             debug_output = f"""FPS: {round(self.clock.get_fps())}
 camera: ({self.camera_x}, {self.camera_y}), x{self.camera_zoom}, focused on "{self.focused_on.name}" ({self.focused_on.type})
+ --- 
+{'\n'.join((f'{key}: {self.additional_debug[key]}' for key in self.additional_debug))}
 {self.info_str()}"""
             draw_text(surface, debug_output, (1, 1), background_color="#000000", font=pygame.font.SysFont("Consolas", 15))
 
+        self.additional_debug = {}
 
         pygame.display.update()
 
