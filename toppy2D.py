@@ -7,7 +7,7 @@ import math
 
 pygame.init()
 
-VER = "1.9.0"
+VER = "1.9.1"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -310,7 +310,7 @@ class GUIObject:
 
         self.setup()
 
-    def setup(self, _):
+    def setup(self, *args):
         return self
 
     def toggle(self, on_off: bool = None):
@@ -502,7 +502,7 @@ class Base:
         self.type = self.__class__.__name__
         self.name = (self.__class__.__name__ if name == None else name)
     
-    def setup(self, _):
+    def setup(self, *args):
         return self
     
     def log(self, text: str):
