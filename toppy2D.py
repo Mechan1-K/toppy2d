@@ -1,13 +1,13 @@
 import pygame
 from typing import overload
-import copy
+from copy import copy
 from pygame.math import Vector2
 from pygame.color import Color
 import math
 
 pygame.init()
 
-VER = "1.8.4"
+VER = "1.9.0"
 
 # ==============================================================================
 # BASIC/HELPFUL FUNCTIONS
@@ -290,23 +290,34 @@ class Dialog:
             else:
                 screen.blit(self.skip_font.render(f"Press '{self.skip_key}' to skip...", True, self.skip_color), placement)
 
+# ==============================================================================
+# GUI objects
+# ==============================================================================
+# region
+
 class GUIObject:
-    def __init__(self, position: tuple[float, int, float, int], size: tuple[float, int, float, int], anchor_point: tuple[float, float] = (0, 0), name: str = None, children: list["GUIObject"] = None):
+    def __init__(self, name: str, position: tuple[float, int, float, int], size: tuple[float, int, float, int], anchor_point: tuple[float, float] = (0, 0), size_constraint: str = "XY", children: list["GUIObject"] = None):
         self.position = position
         self.size = size
         self.anchor_point = anchor_point
+        self.size_constraint = size_constraint
 
         self.children: list[GUIObject] = children if children != None else []
 
-        self.hidden = False
+        self.visible = True
         self.type = self.__class__.__name__
         self.name = name if name != None else self.__class__.__name__
 
+        self.setup()
+
+    def setup(self, _):
+        return self
+
     def toggle(self, on_off: bool = None):
         if on_off == None:
-            self.hidden = not self.hidden
+            self.visible = not self.visible
         else:
-            self.hidden = not on_off
+            self.visible = on_off
 
     def get_all_by_type(self, type) -> list["GUIObject"]:
         out = []
@@ -334,16 +345,28 @@ class GUIObject:
 
     def add_child(self, child: "GUIObject"):
         self.children.append(child)
+    
+    def add_children(self, children: list["GUIObject"]):
+        self.children.extend(children)
 
     def prepare(self, surface: pygame.Surface, position: tuple[int, int]):
         pass
 
     def draw(self, surface: pygame.Surface, position_offset: tuple[int, int] = (0, 0)):
-        if self.hidden:
+        if not self.visible:
             return
+        size_constraint = (
+            surface.get_width() if self.size_constraint[0] == "X" else
+            surface.get_height() if self.size_constraint[0] == "Y" else
+            surface.get_width(),
+
+            surface.get_width() if self.size_constraint[1] == "X" else
+            surface.get_height() if self.size_constraint[1] == "Y" else
+            surface.get_height()
+        )
         size = (
-            surface.get_width()*self.size[0] + self.size[1],
-            surface.get_height()*self.size[2] + self.size[3]
+            size_constraint[0]*self.size[0] + self.size[1],
+            size_constraint[1]*self.size[2] + self.size[3]
         )
 
         position = (
@@ -360,32 +383,32 @@ class GUIObject:
         
         surface.blit(element, position)
 
-class Frame(GUIObject):
-    def __init__(self, position, size, anchor_point = (0, 0), name = None, children = None, background_color = "#FFFFFF"):
-        super().__init__(position, size, anchor_point, name, children)
-        self.background_color = background_color     
+class Frame(GUIObject):    
+    def setup(self, background_color = "#FFFFFF"):
+        self.background_color = background_color
+        return self
     
     def prepare(self, surface: pygame.Surface, position: tuple[int, int]):
         surface.fill(self.background_color)
 
 class SurfaceBox(GUIObject):
-    def __init__(self, position, size, anchor_point = (0, 0), name = None, children = None, surface: pygame.Surface = None, stretch: bool = True):
-        super().__init__(position, size, anchor_point, name, children)
+    def setup(self, surface: pygame.Surface = None, stretch: bool = True):
         self.surface = surface if surface != None else placeholder()
         self.stretch = stretch
+        return self
     
     def prepare(self, surface: pygame.Surface, position):
         surface.blit(pygame.transform.scale(self.surface, surface.get_size()) if self.stretch else scale_nostretch(self.surface, surface.get_size()), (0, 0))
 
 class TextLabel(SurfaceBox):
-    def __init__(self, position, size, anchor_point=(0, 0), name=None, children=None, text: str = "TextLabel", color = "#000000", background_color = "#FFFFFF"):
+    def setup(self, text: str = "TextLabel", color = "#000000", background_color = "#FFFFFF", padding: int = 2, font: pygame.font.Font = None):
+        super().setup()
         self.text = text
         self.color = color
         self.background_color = background_color
-        self.font = pygame.font.SysFont("arial", 25)
-        self.padding = 2
-        
-        super().__init__(position, size, anchor_point, name, children)
+        self.font = font if font != None else pygame.font.SysFont("arial", 25)
+        self.padding = padding
+        return self
     
     def prepare(self, surface, position):
         self.surface = pygame.Surface(surface.get_size())
@@ -393,16 +416,20 @@ class TextLabel(SurfaceBox):
         draw_text(self.surface, self.text, (self.padding, self.padding), self.color, self.font)
         super().prepare(surface, position)
 
-class SurfaceButton(SurfaceBox):
-    def __init__(self, position, size, anchor_point=(0, 0), name=None, children=None, surface = None, onclick = lambda: None, stretch = True):
-        super().__init__(position, size, anchor_point, name, children, surface, stretch)
+class SurfaceButton(SurfaceBox):   
+    def setup(self, surface: pygame.Surface = placeholder(), stretch: bool = True, on_click = lambda: None, hover_intesity: int = 30, click_intensity: int = 60):
+        """
+        hover and click intensity are variables that determine the transparency of the black tint applied on a button when clicked or hovered
+        """
+        super().setup(surface, stretch)
         self.pressed = False
         self.hovering = False
         self.lastpressed = False
-        self.onclick = onclick
+        self.on_click = copy(on_click)
 
-        self.hover_intensity = 30
-        self.click_intensity = 60
+        self.hover_intensity = hover_intesity
+        self.click_intensity = click_intensity
+        return self
 
     def prepare(self, surface, position):
         mouse = pygame.mouse.get_pos()
@@ -414,7 +441,7 @@ class SurfaceButton(SurfaceBox):
             if self.pressed:
                 self.surface = overlay_colour(self.surface, (0, 0, 0), self.click_intensity)
                 if not self.lastpressed:
-                    self.onclick()
+                    self.on_click()
             else:
                 self.surface = overlay_colour(self.surface, (0, 0, 0), self.hover_intensity)
             super().prepare(surface, position)
@@ -426,14 +453,15 @@ class SurfaceButton(SurfaceBox):
         self.lastpressed = self.pressed
 
 class TextButton(SurfaceButton):
-    def __init__(self, position, size, anchor_point=(0, 0), name=None, children=None, text: str = "TextLabel", color = "#000000", background_color = "#FFFFFF", onclick = lambda: None):
+    def setup(self, text: str = "TextLabel", color = "#000000", background_color = "#FFFFFF", padding: int = 2, font: pygame.font.Font = None, on_click = lambda: None):
+        super().setup()
         self.text = text
         self.color = color
         self.background_color = background_color
-        self.font = pygame.font.SysFont("arial", 25)
-        self.padding = 2
-
-        super().__init__(position, size, anchor_point, name, children, None, onclick)
+        self.font = font if font != None else pygame.font.SysFont("arial", 25)
+        self.padding = padding
+        self.on_click = on_click
+        return self
 
     def prepare(self, surface, position):
         self.surface = pygame.Surface(surface.get_size())
@@ -441,44 +469,26 @@ class TextButton(SurfaceButton):
         draw_text(self.surface, self.text, (self.padding, self.padding), self.color, self.font)
         super().prepare(surface, position)
 
-class GUI:
+class GUI(GUIObject):
     def __init__(self):
+        self.visible = True
+
         self.dialog = Dialog()
 
         self.children: list[GUIObject] = []
-    
-    def add_child(self, child):
-        self.children.append(child)
-    
-    def get_all_by_type(self, type) -> list["GUIObject"]:
-        out = []
-        for object in self.children:
-            if object.type == type:
-                out.append(object)
-        return out
-    
-    def get_by_type(self, type) -> "GUIObject":
-        for object in self.children:
-            if object.type == type:
-                return object
-    
-    def get_all_by_name(self, name) -> list["GUIObject"]:
-        out = []
-        for object in self.children:
-            if object.name == name:
-                out.append(object)
-        return out
-    
-    def get_by_name(self, name) -> "GUIObject":
-        for object in self.children:
-            if object.name == name:
-                return object
+
+        self.setup = None
+        self.prepare = None
 
     def draw(self, surface):
+        if not self.visible:
+            return
+
         for object in self.children:
             object.draw(surface)
 
         self.dialog.draw(surface)
+# endregion
 
 # endregion
 
@@ -492,6 +502,9 @@ class Base:
         self.type = self.__class__.__name__
         self.name = (self.__class__.__name__ if name == None else name)
     
+    def setup(self, _):
+        return self
+    
     def log(self, text: str):
         print(f"[{self.name}] {text}")
 
@@ -501,7 +514,7 @@ class Base:
 # region
 
 class Object(Base):
-    def __init__(self, x: int, y: int, name: str = None, texture_surface: pygame.Surface = None, collision_rect:tuple = None):
+    def __init__(self, name: str | None, x: int, y: int, texture_surface: pygame.Surface = None, collision_rect:tuple = None):
         super().__init__(name)
 
         self.x = x
@@ -512,18 +525,22 @@ class Object(Base):
         
         self.surface = texture_surface if texture_surface != None else placeholder()
         self.collider = collision_rect
+
+        self.setup()
     
     def get_rect(self):
         rect = self.surface.get_rect()
         rect.x, rect.y = self.x, self.y
         return rect
     
-    def get_colliders(self) -> tuple[int, int, int, int]:
+    def get_colliders(self, ignore_solid_state = False) -> tuple[int, int, int, int]:
         """
         returns a list of rect tuples of the object's colliders, relative to the world:
 
         (x, y, w, h)
         """
+        if not ignore_solid_state and not self.solid:
+            return [(0, 0, 0, 0)]
         if self.collider == None:
             collider = self.surface.get_rect()
         else:
@@ -546,10 +563,10 @@ class Object(Base):
             pygame.draw.rect(surface, "#FF0000", (collider[0] + offset_x, collider[1] + offset_y, *collider[2:]), 4)
         if debug_options[1]:
             pygame.draw.rect(surface, "#FFFF00", (self.x + offset_x, self.y + offset_y, self.surface.get_width(), self.surface.get_height()), 2)
-           
+
 
 class Player(Object):
-    def __init__(self, x, y, name = None, texture_surface = None, collision_rect = None, speed: int = 8, controls: list[str, str, str, str] = None):
+    def setup(self, speed: int = 8, controls: list[str, str, str, str] = None):
         """
         controls is a list with keyboard keys, examples:
 
@@ -557,10 +574,10 @@ class Player(Object):
 
         if controls is not defined, you are expected to use the move() method manually
         """
-        super().__init__(x, y, name, texture_surface, collision_rect)
         self.speed = speed
         self.controls = controls if controls != None else []
-    
+        return self
+
     def change_controls(self, new_controls = [None, None, None, None]):
         for i in range(len(new_controls)):
             if new_controls[i] != None:
@@ -603,10 +620,12 @@ class Group(Base):
 
     Group.get_pos() always returns (0, 0)
     """
-    def __init__(self, objects: list[Object], name: str = None):
+    def __init__(self, name: str | None, objects: list[Object] = None):
         super().__init__(name)
 
         self.objects: list[Object] = objects if objects != None else []
+
+        self.setup()
     
     def get_rect(self):
         if not self.objects:
@@ -770,10 +789,10 @@ class Group(Base):
             del working_list[smallest_index]
 
 class Union(Group):
-    def __init__(self, x: int, y: int, objects = None, name = None):
-        super().__init__(objects, name)
+    def setup(self, x: int = 0, y: int = 0):
         self.x = x
         self.y = y
+        return self
     
     def transform_objects(self):
         transformed = []
@@ -806,7 +825,7 @@ class Union(Group):
 class World(Group):
     world_instance = None
     def __init__(self, size: tuple[int, int] = (1000, 1000), background_color="#000000", FPS=30):
-        super().__init__([], "World")
+        super().__init__("World", [])
 
         self.size = size
         self.surface = pygame.Surface((self.size[0]+1000, self.size[1]+1000))
@@ -855,6 +874,11 @@ class World(Group):
         if (event, attr_conditions, func) not in self.handled_events:
             self.handled_events.append((event, attr_conditions, func))
     
+    def delete_event_handle(self, event:str, attr_conditions:dict):
+        for i in range(len(self.handled_events)):
+            if self.handled_events[i][0] == event and self.handled_events[i][1] == attr_conditions:
+                del self.handled_events[i]
+
     def toggle_debug(self):
         self.debug = not self.debug
         self.draw_debug = (True, True, True) if self.debug else (True, False, False)
@@ -880,8 +904,6 @@ class World(Group):
     
     def tick(self):
         """
-        
-
         Handles the following:
 
         - maintaining FPS
@@ -901,8 +923,8 @@ class World(Group):
                     object.control()
                 
                 # camera lock
-
-        self.camera_x, self.camera_y = self.focused_on.x + (self.focused_on.surface.get_rect().w//2), self.focused_on.y + (self.focused_on.surface.get_rect().h//2)
+        if self.focused_on != None:
+            self.camera_x, self.camera_y = self.focused_on.x + (self.focused_on.surface.get_rect().w//2), self.focused_on.y + (self.focused_on.surface.get_rect().h//2)
         
         # handling events
         for event in pygame.event.get():

@@ -4,10 +4,10 @@ import math
 # ! interactions
 # some sort of way to handle windows easily, maybe an optionally used ready Game() class
 # optimizations to player collisions
-# ! add Player inventory and item class
+# add Player inventory and item class
 # ! tile maps
-# ! better GUI sizes maybe add automatic aspect ratios
-# GUI editor
+# GUI editor (maybe (not))
+# world.broadcast method
 
 class Interaction:
     def __init__(self, x:int, y:int, title:str, key_str:str="E", key_int:pygame.key=pygame.K_e, time:int=1, activation_dist:int=20, active:bool=True):
